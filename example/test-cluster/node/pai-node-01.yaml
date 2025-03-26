@@ -13,14 +13,14 @@ metadata:
   name: pai-node-01
 status:
   allocatable:
-    alibabacloud.com/gpu-count: "4"
-    alibabacloud.com/gpu-milli: "4000"
-    cpu: 64
-    memory: 256000Mi
+    alibabacloud.com/gpu-count: '8'
+    alibabacloud.com/gpu-milli: '1000'
+    cpu: 192
+    memory: 2048000Mi
     pods: '110'
   capacity:
-    alibabacloud.com/gpu-count: "4"
-    alibabacloud.com/gpu-milli: "4000"
-    cpu: 64
-    memory: 256000Mi
+    alibabacloud.com/gpu-count: '8'
+    alibabacloud.com/gpu-milli: '1000'
+    cpu: 192
+    memory: 2048000Mi
     pods: '110'

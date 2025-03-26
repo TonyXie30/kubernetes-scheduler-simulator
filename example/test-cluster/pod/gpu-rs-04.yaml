@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: gpu-rs-04
+  name: gpu-rs-04
+  namespace: pai-gpu
+  annotations:
+    alibabacloud.com/gpu-milli: "1000"
+    alibabacloud.com/gpu-count: "5"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpu-deploy-04
+  template:
+    metadata:
+      labels:
+        app: gpu-deploy-04
+    spec:
+      containers:
+      - image: tensorflow:latest
+        name: main
+        resources:
+          limits:
+            cpu: 20
+            memory: 46080Mi
+          requests:
+            cpu: 20
+            memory: 46080Mi
+      hostNetwork: true

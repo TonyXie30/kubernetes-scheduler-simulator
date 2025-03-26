@@ -6,11 +6,11 @@ spec:
   cluster:
     customConfig: example/test-cluster
   customConfig:
-    shufflePod: false
+    shufflePod: true
     workloadTuningConfig:
       ratio: 0.9
       seed: 233
     typicalPodsConfig:
-      isInvolvedCpuPods: true
+      isInvolvedCpuPods: false
       podPopularityThreshold: 95
       isConsideredGpuResWeight: false

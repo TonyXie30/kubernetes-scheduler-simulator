@@ -5,12 +5,12 @@ metadata:
     beta.kubernetes.io/arch: amd64
     beta.kubernetes.io/os: linux
     kubernetes.io/arch: amd64
-    kubernetes.io/hostname: pai-node-00
+    kubernetes.io/hostname: pai-node-01
     kubernetes.io/os: linux
     node-role.kubernetes.io/master: ''
     alibabacloud.com/gpu-card-model: V100
-    node-ip: 192.168.0.100
-  name: pai-node-00
+    node-ip: 192.168.0.103
+  name: pai-node-03
 status:
   allocatable:
     alibabacloud.com/gpu-count: '8'
