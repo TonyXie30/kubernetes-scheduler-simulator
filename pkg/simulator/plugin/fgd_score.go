@@ -59,6 +59,7 @@ func (plugin *FGDScorePlugin) ScoreExtensions() framework.ScoreExtensions {
 	return nil
 }
 
+// FGD计算实现,包含partial实现和完整GPU实现
 func calculateGpuShareFragExtendScore(nodeRes simontype.NodeResource, podRes simontype.PodResource, typicalPods *simontype.TargetPodList) (score int64, gpuId string) {
 	nodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(nodeRes, *typicalPods)
 	if podRes.GpuNumber == 1 && podRes.MilliGpu < gpushareutils.MILLI { // request partial GPU

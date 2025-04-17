@@ -144,6 +144,7 @@ func NodeGpuFragAmount(nodeRes simontype.NodeResource, typicalPods simontype.Tar
 	return GetFragAmountByNodeResAndFragRatio(nodeRes, fragRatio)
 }
 
+// 判断碎片化类型之后计算fragAmount
 func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontype.TargetPodList) FragAmount {
 	data := make([]float64, len(FragRatioDataMap))
 	fragAmount := NewFragAmount(nodeRes.NodeName, data)
@@ -181,6 +182,7 @@ func NodeGpuShareFragAmountScore(nodeRes simontype.NodeResource, typicalPods sim
 	return fragAmount.FragAmountSumExceptQ3()
 }
 
+// 该函数会遍历节点每个 GPU 的剩余资源量，若某个 GPU 的剩余资源量小于 Pod 请求的 GPU 资源量，就将其累加到 gpuFragMilli 中。最终返回无法满足 Pod 请求的 GPU 资源总量。
 func GetGpuFragMilliByNodeResAndPodRes(nodeRes simontype.NodeResource, podRes simontype.PodResource) int64 {
 	gpuFragMilli := int64(0)
 	for _, milliGpuLeft := range nodeRes.MilliGpuLeftList {

@@ -22,7 +22,7 @@ import (
 	gpushareutils "github.com/hkust-adsl/kubernetes-scheduler-simulator/pkg/type/open-gpu-share/utils"
 	"github.com/hkust-adsl/kubernetes-scheduler-simulator/pkg/utils"
 )
-
+// GpuSharePlugin 用于提供调度框架，主要功能是为Pod分配GPU资源
 // GpuSharePlugin is a plugin for scheduling framework
 type GpuSharePlugin struct {
 	sync.RWMutex
