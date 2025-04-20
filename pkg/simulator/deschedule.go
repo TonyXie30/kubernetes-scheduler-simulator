@@ -3,6 +3,7 @@ package simulator
 import (
 	"container/heap"
 	"math"
+	"sort"
 
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +16,7 @@ const (
 	DeschedulePolicyCosSim       = "cosSim"
 	DeschedulePolicyFragOnePod   = "fragOnePod"
 	DeschedulePolicyFragMultiPod = "fragMultiPod"
+	DeschedulePolicyBinPacking   = "binPacking"
 )
 
 func (sim *Simulator) DescheduleCluster() []simontype.UnscheduledPod {
@@ -37,6 +39,9 @@ func (sim *Simulator) DescheduleCluster() []simontype.UnscheduledPod {
 
 	case DeschedulePolicyFragMultiPod:
 		failedPods = sim.descheduleClusterOnFragMultiPod(numPodsToDeschedule, nodeStatus, nodeResMap, podMap)
+
+	case DeschedulePolicyBinPacking:
+		failedPods = sim.descheduleClusterOnBinPacking(numPodsToDeschedule, nodeStatus, nodeResMap, podMap)
 
 	default:
 		log.Errorf("DeschedulePolicy not found\n")
@@ -175,4 +180,111 @@ func (sim *Simulator) descheduleClusterOnFragMultiPod(numPodsToDeschedule int, n
 	descheduledPod := getPodfromPodMap(descheduledPodKeys, podMap)
 	log.Infof("[DescheduleCluster] Num of Descheduled Pods: %d\n", len(descheduledPod))
 	return sim.SchedulePods(descheduledPod)
+}
+
+func (sim *Simulator) descheduleClusterOnBinPacking(numPodsToDeschedule int, nodeStatus []simontype.NodeStatus,
+	nodeResMap map[string]simontype.NodeResource, podMap map[string]*corev1.Pod) []simontype.UnscheduledPod {
+	// 按资源需求从大到小排序 Pod
+	podList := make([]*corev1.Pod, 0, len(podMap))
+	for _, pod := range podMap {
+		podList = append(podList, pod)
+	}
+	sort.Slice(podList, func(i, j int) bool {
+		podResI := utils.GetPodResource(podList[i])
+		podResJ := utils.GetPodResource(podList[j])
+		return (podResI.MilliCpu > podResJ.MilliCpu) || (podResI.MilliCpu == podResJ.MilliCpu && podResI.MilliGpu > podResJ.MilliGpu)
+	})
+
+	var descheduledPodKeys []string
+	// 为每个 Pod 增加重试次数
+	maxRetries := 3
+
+	for _, pod := range podList {
+		if numPodsToDeschedule <= 0 {
+			break
+		}
+
+		retryCount := 0
+		for retryCount < maxRetries {
+			var bestFitNodeName string
+			var minRemainingRes int64 = math.MaxInt64
+			podRes := utils.GetPodResource(pod)
+
+			// 遍历所有节点，寻找最佳适配节点
+			for _, ns := range nodeStatus {
+				nodeName := ns.Node.Name
+				nodeRes := nodeResMap[nodeName]
+
+				if nodeRes.MilliCpuLeft >= podRes.MilliCpu && canAllocateGpu(nodeRes.MilliGpuLeftList, podRes.MilliGpu) {
+					// 计算分配资源后剩余的总资源
+					remainingGpuList := make([]int64, len(nodeRes.MilliGpuLeftList))
+					copy(remainingGpuList, nodeRes.MilliGpuLeftList)
+					allocateGpu(&remainingGpuList, podRes.MilliGpu)
+					remainingGpu := sum(remainingGpuList)
+					remainingRes := remainingGpu
+
+					// 更新最佳适配节点
+					if remainingRes < minRemainingRes {
+						minRemainingRes = remainingRes
+						bestFitNodeName = nodeName
+					}
+				}
+			}
+
+			if bestFitNodeName != "" {
+				// 从原节点删除 Pod
+				if err := sim.deletePod(pod); err != nil {
+					log.Errorf("[descheduleClusterOnBinPacking] Failed to delete pod(%s) on attempt %d: %v\n",
+						utils.GeneratePodKey(pod), retryCount+1, err)
+				} else {
+					descheduledPodKeys = append(descheduledPodKeys, utils.GeneratePodKey(pod))
+					numPodsToDeschedule -= 1
+					// 更新节点资源
+					nodeRes := nodeResMap[bestFitNodeName]
+					nodeRes.MilliCpuLeft -= podRes.MilliCpu
+					allocateGpu(&nodeRes.MilliGpuLeftList, podRes.MilliGpu)
+					nodeResMap[bestFitNodeName] = nodeRes
+					break
+				}
+			}
+
+			retryCount++
+			log.Infof("[descheduleClusterOnBinPacking] Retrying to deschedule pod(%s), attempt %d\n",
+				utils.GeneratePodKey(pod), retryCount)
+		}
+	}
+
+	sim.ClusterAnalysis(TagPostEviction)
+	descheduledPod := getPodfromPodMap(descheduledPodKeys, podMap)
+	log.Infof("[DescheduleCluster] Num of Descheduled Pods: %d\n", len(descheduledPod))
+	return sim.SchedulePods(descheduledPod)
+}
+
+// 优化后的辅助函数：计算列表元素的总和
+func sum(list []int64) int64 {
+	total := int64(0)
+	for i := 0; i < len(list); i++ {
+		total += list[i]
+	}
+	return total
+}
+
+// 优化后的辅助函数：检查是否可以分配 GPU 资源
+func canAllocateGpu(milliGpuLeftList []int64, milliGpuNeeded int64) bool {
+	for i := 0; i < len(milliGpuLeftList); i++ {
+		if milliGpuLeftList[i] >= milliGpuNeeded {
+			return true
+		}
+	}
+	return false
+}
+
+// 优化后的辅助函数：分配 GPU 资源
+func allocateGpu(milliGpuLeftList *[]int64, milliGpuNeeded int64) {
+	for i := 0; i < len(*milliGpuLeftList); i++ {
+		if (*milliGpuLeftList)[i] >= milliGpuNeeded {
+			(*milliGpuLeftList)[i] -= milliGpuNeeded
+			return
+		}
+	}
 }

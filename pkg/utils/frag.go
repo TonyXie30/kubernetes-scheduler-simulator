@@ -159,6 +159,7 @@ func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontyp
 		if fragType == Q3Satisfied { // Part of GPUs are treated as Lack GPU fragment
 			gpuFragMilli := GetGpuFragMilliByNodeResAndPodRes(nodeRes, pod.TargetPodResource)
 			fragAmount.AddByFragType(Q2LackGpu, freq*float64(gpuFragMilli))
+			// 对满足需求的GPU资源碎片化率度量进行修改，原先为不视为碎片化，现在改为将其期望视为碎片化
 			fragAmount.AddByFragType(Q3Satisfied, freq*float64(gpuMilliLeftTotal-gpuFragMilli))
 		} else { // Q1, Q2, XL, XR, NA => all idle GPU resources are treated as fragment
 			fragAmount.AddByFragType(fragType, freq*float64(gpuMilliLeftTotal))
