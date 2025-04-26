@@ -29,7 +29,7 @@ func init() {
 	ApplyCmd.Flags().BoolVar(&options.UseGreed, "use-greed", false, "use greedy algorithm when queue pods")
 	ApplyCmd.Flags().BoolVarP(&options.Interactive, "interactive", "i", false, "interactive mode")
 	ApplyCmd.Flags().StringSliceVarP(&options.ExtendedResources, "extended-resources", "e", nil, "show extended resources when reporting, e.g. open-local, gpu")
-
+	ApplyCmd.Flags().StringVarP(&options.PodDistribution, "pod-distribution", "p", options.PodDistribution, "pod distribution, e.g. 1GPU pod takes 0.1 of the cluster, 2GPU pod takes 0.2 of the cluster, etc.")
 	if err := ApplyCmd.MarkFlagRequired("simon-config"); err != nil {
 		log.Fatal("failed to init ApplyCmd on simon-config flag")
 	}

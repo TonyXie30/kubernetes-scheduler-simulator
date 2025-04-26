@@ -145,15 +145,9 @@ func NodeGpuFragAmount(nodeRes simontype.NodeResource, typicalPods simontype.Tar
 }
 
 // 判断碎片化类型之后计算fragAmount
-func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontype.TargetPodList) FragAmount {
+func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontype.TargetPodList, gpuPodRatios map[int]float64) FragAmount {
 	data := make([]float64, len(FragRatioDataMap))
 	fragAmount := NewFragAmount(nodeRes.NodeName, data)
-
-	gpuPodRatios := map[int]float64{
-		1: 0.1,
-		2: 0.3,
-		8: 0.2,
-	}
 
 	// 期望计算
 	var expectation float64;
@@ -236,8 +230,8 @@ func NodeGpuFragBasedOnSkyline(nodeRes simontype.NodeResource, skylinePods simon
 	return gpuMilliLeftTotal
 }
 
-func NodeGpuShareFragAmountScore(nodeRes simontype.NodeResource, typicalPods simontype.TargetPodList) float64 {
-	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods)
+func NodeGpuShareFragAmountScore(nodeRes simontype.NodeResource, typicalPods simontype.TargetPodList, podDistribution map[int]float64) float64 {
+	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods, podDistribution)
 	return fragAmount.FragAmountTotal()
 }
 

@@ -62,6 +62,8 @@ type Simulator struct {
 	podTotalMilliGpuReq int64
 	nodeTotalMilliCpu   int64
 	nodeTotalMilliGpu   int64
+
+	podDistributionConfig map[int]float64
 }
 
 // status captures reason why one pod fails to be scheduled
@@ -73,6 +75,7 @@ type simulatorOptions struct {
 	kubeconfig      string
 	schedulerConfig string
 	customConfig    v1alpha1.CustomConfig
+	podDistributionConfig map[int]float64
 }
 
 // Option configures a Simulator
@@ -82,6 +85,7 @@ var defaultSimulatorOptions = simulatorOptions{
 	kubeconfig:      "",
 	schedulerConfig: "",
 	customConfig:    v1alpha1.CustomConfig{},
+	podDistributionConfig: map[int]float64{},
 }
 
 // New generates all components that will be needed to simulate scheduling and returns a complete simulator
@@ -127,6 +131,7 @@ func New(opts ...Option) (Interface, error) {
 		ctx:             ctx,
 		cancelFunc:      cancel,
 		customConfig:    options.customConfig,
+		podDistributionConfig: options.podDistributionConfig,
 	}
 
 	// create a scheduler
@@ -153,7 +158,7 @@ func New(opts ...Option) (Interface, error) {
 			return simonplugin.NewBestFitScorePlugin(configuration, handle)
 		},
 		simontype.FGDScorePluginName: func(configuration runtime.Object, handle framework.Handle) (framework.Plugin, error) {
-			return simonplugin.NewFGDScorePlugin(configuration, handle, &sim.typicalPods)
+			return simonplugin.NewFGDScorePlugin(configuration, handle, &sim.typicalPods, sim.GetPodDistribution())
 		},
 	}
 	sim.scheduler, err = scheduler.New(
@@ -208,6 +213,10 @@ func (sim *Simulator) ScheduleApp(apps AppResource) ([]simontype.UnscheduledPod,
 
 func (sim *Simulator) GetCustomConfig() v1alpha1.CustomConfig {
 	return sim.customConfig
+}
+
+func (sim *Simulator) GetPodDistribution() map[int]float64 {
+	return sim.podDistributionConfig
 }
 
 func (sim *Simulator) GetClusterNodeStatus() []simontype.NodeStatus {
@@ -615,6 +624,12 @@ func WithSchedulerConfig(schedulerConfig string) Option {
 func WithCustomConfig(customConfig v1alpha1.CustomConfig) Option {
 	return func(o *simulatorOptions) {
 		o.customConfig = customConfig
+	}
+}
+
+func WithPodDistributionConfig(podDistribution map[int]float64) Option {
+	return func(o *simulatorOptions) {
+		o.podDistributionConfig = podDistribution
 	}
 }
 

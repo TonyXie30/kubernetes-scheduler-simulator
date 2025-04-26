@@ -171,7 +171,7 @@ func (sim *Simulator) NodeGpuFragAmount(nodeRes simontype.NodeResource) utils.Fr
 			return frag
 		}
 	} else {
-		frag := utils.NodeGpuShareFragAmount(nodeRes, sim.typicalPods)
+		frag := utils.NodeGpuShareFragAmount(nodeRes, sim.typicalPods, sim.GetPodDistribution())
 		sim.fragMemo.Store(nodeResKey, frag.Data)
 		log.Debugf("[DEBUG][sim.NodeGpuFragAmount] calc node(%s) frag (%.2f): %s\n", nodeRes.NodeName, frag.FragAmountSumExceptQ3(), frag.Repr())
 		return frag

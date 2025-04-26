@@ -32,6 +32,7 @@ type Options struct {
 	UseGreed                   bool
 	Interactive                bool
 	ExtendedResources          []string
+	PodDistribution            string
 }
 
 type Applier struct {
@@ -42,6 +43,7 @@ type Applier struct {
 	interactive       bool
 	extendedResources []string
 	customConfig      v1alpha1.CustomConfig
+	podDistributionConfig map[int]float64
 }
 
 type Interface interface {
@@ -64,6 +66,21 @@ func NewApplier(opts Options) Interface {
 		log.Fatalf("failed to unmarshal config json to object: %v", err)
 	}
 
+	podDistributionConfig := make(map[int]float64)
+	if opts.PodDistribution != "" {
+		podDistributionConfigFile, err := os.ReadFile(opts.PodDistribution)
+		if err!= nil {
+			log.Fatalf("failed to read pod distribution config file(%s): %v", opts.PodDistribution, err)
+		}
+
+		var podRatios simontype.PodRatios
+
+		if err := yaml.Unmarshal(podDistributionConfigFile, &podRatios); err != nil {
+			log.Fatalf("failed to unmarshal pod distribution config file(%s): %v", opts.PodDistribution, err)
+		}
+		podDistributionConfig = podRatios.GPUPodRatios
+	}
+
 	applier := &Applier{
 		cluster:           simonCR.Spec.Cluster,
 		appList:           simonCR.Spec.AppList,
@@ -72,6 +89,7 @@ func NewApplier(opts Options) Interface {
 		useGreed:          opts.UseGreed,
 		interactive:       opts.Interactive,
 		extendedResources: opts.ExtendedResources,
+		podDistributionConfig: podDistributionConfig,
 	}
 
 	if err := validate(applier); err != nil {
@@ -160,7 +178,7 @@ func (applier *Applier) Run() (err error) {
 	// Run the simulator
 	success := false
 	var result *simontype.SimulateResult
-	result, err = simulator.Simulate(clusterResource, selectedResourceList, simulator.WithSchedulerConfig(applier.schedulerConfig), simulator.WithKubeConfig(applier.cluster.KubeConfig), simulator.WithCustomConfig(applier.customConfig))
+	result, err = simulator.Simulate(clusterResource, selectedResourceList, simulator.WithSchedulerConfig(applier.schedulerConfig), simulator.WithKubeConfig(applier.cluster.KubeConfig), simulator.WithCustomConfig(applier.customConfig), simulator.WithPodDistributionConfig(applier.podDistributionConfig))
 	if err != nil {
 		return err
 	}

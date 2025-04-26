@@ -59,3 +59,7 @@ type OpenGpuSharePluginCfg struct {
 
 	GpuSelMethod GpuSelMethod `json:"gpuSelMethod,omitempty"`
 }
+
+type PodRatios struct {
+	GPUPodRatios map[int]float64 `yaml:"gpuPodRatios"`
+}

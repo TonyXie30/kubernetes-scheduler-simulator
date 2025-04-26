@@ -15,14 +15,14 @@ import (
 //	 i.e., how many of the idle GPUs are fragment.
 //   Its output should be cached to plugin.fragGpuRatio to avoid re-computation.
 //   It should be called before filter to avoid the change of visible nodes.
-func PreFilterFragGpuRatio(nodeInfoList []*framework.NodeInfo, typicalPods simontype.TargetPodList) (float64, *framework.Status) {
+func PreFilterFragGpuRatio(nodeInfoList []*framework.NodeInfo, typicalPods simontype.TargetPodList, podDistribution map[int]float64) (float64, *framework.Status) {
 	data := make([]float64, len(utils.FragRatioDataMap))
 	clusterFragAmount := utils.NewFragAmount("cluster", data)
 
 	var nodeCnt int = 0
 	for _, nodeInfo := range nodeInfoList {
 		nodeResPtr := utils.GetNodeResourceViaNodeInfo(nodeInfo)
-		nodeFragAmount := utils.NodeGpuShareFragAmount(*nodeResPtr, typicalPods)
+		nodeFragAmount := utils.NodeGpuShareFragAmount(*nodeResPtr, typicalPods, podDistribution)
 		log.Debugf("[DEBUG][plugin.PreFilterFragGpuRatio] calc [%d] node(%s) frag (%.2f): %s\n", nodeCnt, nodeInfo.Node().Name, nodeFragAmount.FragAmountSumExceptQ3(), nodeFragAmount.Repr())
 		if err := clusterFragAmount.AddFragAmount(nodeFragAmount); err != nil {
 			return 0.0, framework.NewStatus(framework.Error, fmt.Sprintf("[ClusterAnalysis] %s\n", err.Error()))

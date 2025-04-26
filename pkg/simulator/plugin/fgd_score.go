@@ -18,16 +18,20 @@ import (
 type FGDScorePlugin struct {
 	handle      framework.Handle
 	typicalPods *simontype.TargetPodList
+	podDistribution map[int]float64	
 }
 
 var _ framework.ScorePlugin = &FGDScorePlugin{}
 
-func NewFGDScorePlugin(_ runtime.Object, handle framework.Handle, typicalPods *simontype.TargetPodList) (framework.Plugin, error) {
+func NewFGDScorePlugin(_ runtime.Object, handle framework.Handle, typicalPods *simontype.TargetPodList, podDistributionConfig map[int]float64) (framework.Plugin, error) {
 	plugin := &FGDScorePlugin{
 		handle:      handle,
 		typicalPods: typicalPods,
+		podDistribution: podDistributionConfig,
 	}
-	allocateGpuIdFunc[plugin.Name()] = allocateGpuIdBasedOnFGDScore
+	allocateGpuIdFunc[plugin.Name()] = func(nodeRes simontype.NodeResource, podRes simontype.PodResource, cfg simontype.GpuPluginCfg, typicalPods *simontype.TargetPodList) (gpuId string) {
+		return allocateGpuIdBasedOnFGDScore(nodeRes, podRes, cfg, typicalPods, plugin.podDistribution)
+	}
 	return plugin, nil
 }
 
@@ -51,7 +55,7 @@ func (plugin *FGDScorePlugin) Score(ctx context.Context, state *framework.CycleS
 		return framework.MinNodeScore, framework.NewStatus(framework.Error, fmt.Sprintf("Node (%s) %s does not match GPU type request of pod %s\n", nodeName, nodeRes.Repr(), podRes.Repr()))
 	}
 
-	score, _ := calculateGpuShareFragExtendScore(nodeRes, podRes, plugin.typicalPods)
+	score, _ := calculateGpuShareFragExtendScore(nodeRes, podRes, plugin.typicalPods, plugin.podDistribution)
 	return score, framework.NewStatus(framework.Success)
 }
 
@@ -60,8 +64,8 @@ func (plugin *FGDScorePlugin) ScoreExtensions() framework.ScoreExtensions {
 }
 
 // FGD计算实现,包含partial实现和完整GPU实现
-func calculateGpuShareFragExtendScore(nodeRes simontype.NodeResource, podRes simontype.PodResource, typicalPods *simontype.TargetPodList) (score int64, gpuId string) {
-	nodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(nodeRes, *typicalPods)
+func calculateGpuShareFragExtendScore(nodeRes simontype.NodeResource, podRes simontype.PodResource, typicalPods *simontype.TargetPodList, podDistribution map[int]float64) (score int64, gpuId string) {
+	nodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(nodeRes, *typicalPods, podDistribution)
 	if podRes.GpuNumber == 1 && podRes.MilliGpu < gpushareutils.MILLI { // request partial GPU
 		score, gpuId = 0, ""
 		for i := 0; i < len(nodeRes.MilliGpuLeftList); i++ {
@@ -69,7 +73,7 @@ func calculateGpuShareFragExtendScore(nodeRes simontype.NodeResource, podRes sim
 				newNodeRes := nodeRes.Copy()
 				newNodeRes.MilliCpuLeft -= podRes.MilliCpu
 				newNodeRes.MilliGpuLeftList[i] -= podRes.MilliGpu
-				newNodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(newNodeRes, *typicalPods)
+				newNodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(newNodeRes, *typicalPods, podDistribution)
 				fragScore := int64(sigmoid((nodeGpuShareFragScore-newNodeGpuShareFragScore)/1000) * float64(framework.MaxNodeScore))
 				if gpuId == "" || fragScore > score {
 					score = fragScore
@@ -80,12 +84,12 @@ func calculateGpuShareFragExtendScore(nodeRes simontype.NodeResource, podRes sim
 		return score, gpuId
 	} else {
 		newNodeRes, _ := nodeRes.Sub(podRes)
-		newNodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(newNodeRes, *typicalPods)
+		newNodeGpuShareFragScore := utils.NodeGpuShareFragAmountScore(newNodeRes, *typicalPods, podDistribution)
 		return int64(sigmoid((nodeGpuShareFragScore-newNodeGpuShareFragScore)/1000) * float64(framework.MaxNodeScore)), simontype.AllocateExclusiveGpuId(nodeRes, podRes)
 	}
 }
 
-func allocateGpuIdBasedOnFGDScore(nodeRes simontype.NodeResource, podRes simontype.PodResource, _ simontype.GpuPluginCfg, typicalPods *simontype.TargetPodList) (gpuId string) {
-	_, gpuId = calculateGpuShareFragExtendScore(nodeRes, podRes, typicalPods)
+func allocateGpuIdBasedOnFGDScore(nodeRes simontype.NodeResource, podRes simontype.PodResource, _ simontype.GpuPluginCfg, typicalPods *simontype.TargetPodList, podDistribution map[int]float64) (gpuId string) {
+	_, gpuId = calculateGpuShareFragExtendScore(nodeRes, podRes, typicalPods, podDistribution)
 	return gpuId
 }
