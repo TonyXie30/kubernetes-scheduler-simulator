@@ -100,15 +100,15 @@ func TestNodeGpuFragAmountBellman_EightGpu(t *testing.T) {
 func TestNodeGpuShareFragAmountScore(t *testing.T) {
 	typicalPods := TestingGenerateGetTypicalPods()
 	nodeRes := simontype.NodeResource{NodeName: "4x1080_used", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{200, 1000, 1000, 500}, GpuNumber: 4, GpuType: "1080"}
-	score := NodeGpuShareFragAmountScore(nodeRes, typicalPods)
+	score := NodeGpuShareFragAmountScore(nodeRes, typicalPods, nil) 
 	assert.InDelta(t, 2566.62, score, 0.01)
 
 	nodeRes = simontype.NodeResource{NodeName: "4x1080_full", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000}, GpuNumber: 4, GpuType: "1080"}
-	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods)
+	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods, nil) 
 	assert.InDelta(t, 3802.40, score, 0.01)
 
 	nodeRes = simontype.NodeResource{NodeName: "8x1080_full", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000}, GpuNumber: 8, GpuType: "1080"}
-	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods)
+	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods, nil) 
 	assert.InDelta(t, 7604.80, score, 0.01)
 
 	typicalPods = simontype.TargetPodList{}
@@ -116,7 +116,7 @@ func TestNodeGpuShareFragAmountScore(t *testing.T) {
 	nodeRes = simontype.NodeResource{NodeName: "4x1080_used_lack_CPU", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{200, 1000, 1000, 500}, GpuNumber: 4, GpuType: "1080"}
 	assert.Equal(t, GetNodePodFrag(nodeRes, typicalPods[0].TargetPodResource), Q4LackCpu)
 	assert.Equal(t, int64(2700), GetGpuMilliLeftTotal(nodeRes))
-	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods)
+	score = NodeGpuShareFragAmountScore(nodeRes, typicalPods, nil) 
 	assert.InDelta(t, 251.91, score, 0.01)
 }
 
@@ -124,17 +124,17 @@ func TestNodeGpuShareFragAmountWithNonGpu(t *testing.T) {
 	fmt.Println(FragRatioDataMap)
 	typicalPods := TestingGenerateGetTypicalPodsWithNonGpu()
 	nodeRes := simontype.NodeResource{NodeName: "8xP100_empty", MilliCpuLeft: 64000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000}, GpuNumber: 8, GpuType: "P100"}
-	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 887.20, fragAmount.FragAmountSumExceptQ3(), 0.01)
 	fmt.Println(fragAmount.Repr())
 
 	nodeRes = simontype.NodeResource{NodeName: "8xP100_halved", MilliCpuLeft: 32000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000, 0, 0, 0, 0}, GpuNumber: 8, GpuType: "P100"}
-	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 554.4, fragAmount.FragAmountSumExceptQ3(), 0.01)
 	fmt.Println(fragAmount.Repr())
 
 	nodeRes = simontype.NodeResource{NodeName: "8xP100_nocpu", MilliCpuLeft: 0, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000, 0, 0, 0, 0}, GpuNumber: 8, GpuType: "P100"}
-	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	fmt.Println(fragAmount.Repr())
 	assert.InDelta(t, 4000, fragAmount.FragAmountSumExceptQ3(), 0.01)
 }
@@ -142,15 +142,15 @@ func TestNodeGpuShareFragAmountWithNonGpu(t *testing.T) {
 func TestNodeGpuShareFragAmount(t *testing.T) {
 	typicalPods := TestingGenerateGetTypicalPods()
 	nodeRes := simontype.NodeResource{NodeName: "4x1080_used", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{200, 1000, 1000, 500}, GpuNumber: 4, GpuType: "1080"}
-	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount := NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 2566.62, fragAmount.FragAmountSumExceptQ3(), 0.01)
 
 	nodeRes = simontype.NodeResource{NodeName: "4x1080_full", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000}, GpuNumber: 4, GpuType: "1080"}
-	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 3802.40, fragAmount.FragAmountSumExceptQ3(), 0.01)
 
 	nodeRes = simontype.NodeResource{NodeName: "8x1080_full", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000}, GpuNumber: 8, GpuType: "1080"}
-	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 7604.80, fragAmount.FragAmountSumExceptQ3(), 0.01)
 
 	typicalPods = simontype.TargetPodList{}
@@ -158,7 +158,7 @@ func TestNodeGpuShareFragAmount(t *testing.T) {
 	nodeRes = simontype.NodeResource{NodeName: "4x1080_used_lack_CPU", MilliCpuLeft: 1000, MilliCpuCapacity: 64000, MilliGpuLeftList: []int64{200, 1000, 1000, 500}, GpuNumber: 4, GpuType: "1080"}
 	assert.Equal(t, GetNodePodFrag(nodeRes, typicalPods[0].TargetPodResource), Q4LackCpu)
 	assert.Equal(t, int64(2700), GetGpuMilliLeftTotal(nodeRes))
-	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods)
+	fragAmount = NodeGpuShareFragAmount(nodeRes, typicalPods, nil)
 	assert.InDelta(t, 251.91, fragAmount.FragAmountSumExceptQ3(), 0.01)
 }
 
