@@ -16,11 +16,11 @@ status:
     alibabacloud.com/gpu-count: '8'
     alibabacloud.com/gpu-milli: '1000'
     cpu: 192
-    memory: 2048000Mi
+    memory: 1505762Mi
     pods: '110'
   capacity:
     alibabacloud.com/gpu-count: '8'
     alibabacloud.com/gpu-milli: '1000'
     cpu: 192
-    memory: 2048000Mi
+    memory: 1505762Mi
     pods: '110'

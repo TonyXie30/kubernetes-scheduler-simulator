@@ -1,0 +1,18 @@
+apiVersion: simon/v1alpha1
+kind: Config
+metadata:
+  name: simon-paib-config
+spec:
+  cluster:
+    customConfig: example/test-cluster
+  customConfig:
+    shufflePod: true
+    typicalPodsConfig:
+      isInvolvedCpuPods: false
+      podPopularityThreshold: 95
+      isConsideredGpuResWeight: false
+    exportConfig:
+      nodeSnapshotCSVFilePrefix: "tony/node-snapshot"
+    descheduleConfig:
+      ratio: 1
+      policy: "binPacking"

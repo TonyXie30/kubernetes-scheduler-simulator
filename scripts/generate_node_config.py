@@ -1,6 +1,6 @@
 import os
 
-def generate_node_configs(target_path, num_nodes, start_ip="192.168.0.100", gpu_card_model="V100", gpu_count=8, cpu=192, memory="2048000Mi", pods=110):
+def generate_node_configs(target_path, num_nodes, start_ip="192.168.0.100", gpu_card_model="V100", gpu_count=8, cpu=192, memory="1505762Mi", pods=110):
     # 确保目标路径存在
     if not os.path.exists(target_path):
         os.makedirs(target_path)
@@ -64,5 +64,5 @@ status:
 if __name__ == "__main__":
     # 自定义参数
     target_path = "example/test-cluster/node"
-    num_nodes = 100
+    num_nodes = 500
     generate_node_configs(target_path, num_nodes)
