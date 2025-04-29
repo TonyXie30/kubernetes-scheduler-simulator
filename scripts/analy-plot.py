@@ -1,49 +1,56 @@
 import sys
 import re
 # 读取标准输入的内容
+
 content = sys.stdin.read()
 
+ALLO_KEYS = ['MilliCpu','Memory','Gpu','MilliGpu']
+QUAD_KEYS = ["q1_lack_both", 'q2_lack_gpu', 'q3_satisfied', 'q4_lack_cpu', 'xl_satisfied', 'xr_lack_cpu', 'no_access', "frag_gpu_milli"]
 
-def extract_schedule_data(content):
-    # 提取InitSchedule数据
-    init_schedule_pattern = r'========== Cluster Analysis Results \(InitSchedule\) ==========(.*?)=============================================='
-    init_schedule_match = re.search(init_schedule_pattern, content, re.DOTALL)
-    init_schedule_data = {}
-    if init_schedule_match:
-        init_schedule_section = init_schedule_match.group(1).strip()
-        for line in init_schedule_section.split('\n'):
-            if line.startswith('Allocation Ratio:'):
-                continue
-            parts = line.strip().split(':')
-            if len(parts) == 2:
-                key = parts[0].strip()
-                value = parts[1].strip()
-                init_schedule_data[key] = value
-
-    # 提取PostDeschedule数据
-    post_schedule_pattern = r'========== Cluster Analysis Results \(PostDeschedule\) ==========(.*?)=============================================='
-    post_schedule_match = re.search(post_schedule_pattern, content, re.DOTALL)
-    post_schedule_data = {}
-    if post_schedule_match:
-        post_schedule_section = post_schedule_match.group(1).strip()
-        for line in post_schedule_section.split('\n'):
-            if line.startswith('Allocation Ratio:'):
-                continue
-            parts = line.strip().split(':')
-            if len(parts) == 2:
-                key = parts[0].strip()
-                value = parts[1].strip()
-                post_schedule_data[key] = value
-
-    return init_schedule_data, post_schedule_data
+def camel_to_snake(name):
+    name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
+    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', name).lower()
 
 
-init_data, post_data = extract_schedule_data(content)
-print("InitSchedule数据:")
-for key, value in init_data.items():
-    print(f"{key}: {value}")
+NUM_CLUSTER_ANALYSIS_LINE = 16
+counter = 0
+allo_dict = {}
+quad_dict = {}
+amnt_dict = {}
+totl_dict = {}
 
-print("\nPostDeschedule数据:")
-for key, value in post_data.items():
-    print(f"{key}: {value}")
+for line in content.split('\n'):
+    INFOMSG="level=info msg="
+    if INFOMSG not in line:
+        continue
+    line = line.split(INFOMSG)[1]
+    line = line[1:-2] # get rid of " and \n"
+
+    if 'Cluster Analysis' in line:
+        tag = line.split(')')[0].split('(')[1]
+        counter += 1
+    if 0 < counter <= NUM_CLUSTER_ANALYSIS_LINE:
+        counter = 0 if counter == NUM_CLUSTER_ANALYSIS_LINE else counter + 1                        
+        
+        line = line.strip()
+        item = line.split(":")
+        if len(item) <= 1:
+            continue
+
+        key, value = item[0].strip(), item[1].strip()
+        if key in ALLO_KEYS:
+            ratio = float(value.split('%')[0])
+            allo_dict[camel_to_snake(key+tag)] = ratio
+            amount = float(value.split('(')[1].split('/')[0])
+            amnt_dict[camel_to_snake(key+'Amount'+tag)] = amount
+
+            total = float(value.split(')')[0].split('/')[1])
+            totl_dict[camel_to_snake(key+'Total')] = total # update without tag
+        elif key in QUAD_KEYS:
+            quad_dict[camel_to_snake(key+tag)] = float(value.split('(')[1].split('%')[0].strip())
+
+print(allo_dict)
+print(quad_dict)
+print(amnt_dict)
+print(totl_dict)
 
