@@ -1,8 +1,18 @@
 import os
+import shutil
+import sys
 
 def generate_node_configs(target_path, num_nodes, start_ip="192.168.0.100", gpu_card_model="V100", gpu_count=8, cpu=192, memory="1505762Mi", pods=110):
-    # 确保目标路径存在
-    if not os.path.exists(target_path):
+    # 确保目标路径存在，如果路径不为空先删除路径下文件
+    if os.path.exists(target_path):
+        for root, dirs, files in os.walk(target_path, topdown=False):
+            for file in files:
+                file_path = os.path.join(root, file)
+                os.remove(file_path)
+            for dir in dirs:
+                dir_path = os.path.join(root, dir)
+                shutil.rmtree(dir_path)
+    else:
         os.makedirs(target_path)
 
     # 解析起始 IP
@@ -63,6 +73,10 @@ status:
 
 if __name__ == "__main__":
     # 自定义参数
-    target_path = "example/test-cluster/node"
-    num_nodes = 500
-    generate_node_configs(target_path, num_nodes)
+    if len(sys.argv)!= 3:
+        print("请提供目标路径和节点数量作为参数")
+        sys.exit(1)
+
+    target_path = sys.argv[1]
+    num_nodes = sys.argv[2]
+    generate_node_configs(target_path, int(num_nodes))
