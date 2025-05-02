@@ -1,55 +1,29 @@
 apiVersion: simon/v1alpha1
 kind: Config
 metadata:
-  name: simon-paib-config
+  name: simon-openb-config
 spec:
+  appList: null
   cluster:
     customConfig: example/test-cluster
   customConfig:
-    shufflePod: true
-    typicalPodsConfig:
-      isInvolvedCpuPods: false
-      podPopularityThreshold: 95
-      isConsideredGpuResWeight: false
-    exportConfig:
-      nodeSnapshotCSVFilePrefix: "tony/node-snapshot"
     descheduleConfig:
       ratio: 1
       policy: "binPacking"
-    
-      
-
-# 样例
-# apiVersion: simon/v1alpha1
-# kind: Simon
-# metadata:
-#   name: example-config
-# spec:
-#   cluster:
-#     customConfig: example/test-cluster
-#     kubeConfig: ""
-#   appList:
-#     - name: app1
-#       path: /path/to/app1
-#       chart: false
-#   newNode: ""
-#   customConfig:
-#     shufflePod: true
-#     exportConfig:
-#       podSnapshotYamlFilePrefix: "/path/to/pod/snapshot/yaml"
-#       nodeSnapshotCSVFilePrefix: "/path/to/node/snapshot/csv"
-#     workloadInflationConfig:
-#       ratio: 1.2
-#       seed: 233
-#     workloadTuningConfig:
-#       ratio: 0.9
-#       seed: 233
-#     newWorkloadConfig: ""
-#     descheduleConfig:
-#       ratio: 0.5
-#       policy: "example-policy"
-#     typicalPodsConfig:
-#       isInvolvedCpuPods: false
-#       podPopularityThreshold: 95
-#       podIncreaseStep: 1
-#       gpuResWeight: 0.5
+    exportConfig:
+      nodeSnapshotCSVFilePrefix: tony/node-snapshot
+      podSnapshotYamlFilePrefix: null
+    newWorkloadConfig: null
+    shufflePod: true
+    typicalPodsConfig:
+      gpuResWeight: 0
+      isInvolvedCpuPods: true
+      podIncreaseStep: 1
+      podPopularityThreshold: 95
+    workloadInflationConfig:
+      ratio: 1
+      seed: 233
+    workloadTuningConfig:
+      ratio: 1.3
+      seed: 42
+  newNode: example/newnode/gpushare

@@ -2,45 +2,50 @@ apiVersion: kubescheduler.config.k8s.io/v1beta1
 kind: KubeSchedulerConfiguration
 percentageOfNodesToScore: 100
 profiles:
-  - schedulerName: simon-scheduler
-    plugins:
-      filter:
-        enabled:
-          - name: Open-Gpu-Share
-      score:
-        disabled:
-          - name: RandomScore
-          - name: DotProductScore
-          - name: GpuClusteringScore
-          - name: GpuPackingScore
-          - name: BestFitScore
-          - name: FGDScore
-          - name: ImageLocality
-          - name: NodeAffinity
-          - name: PodTopologySpread
-          - name: TaintToleration
-          - name: NodeResourcesBalancedAllocation
-          - name: InterPodAffinity
-          - name: NodeResourcesLeastAllocated
-          - name: NodePreferAvoidPods
-        enabled:
-          - name: RandomScore
-            weight: 1000
-      reserve:
-        enabled:
-          - name: Open-Gpu-Share
-      bind:
-        disabled:
-          - name: DefaultBinder
-        enabled:
-          - name: Simon
-    pluginConfig:
-      - name: FGDScore
-        args:
-          dimExtMethod: share
-          normMethod: max
+- pluginConfig:
+  - args:
+      dimExtMethod: share
+      normMethod: max
+    name: RandomScore
+  - args:
+      dimExtMethod: share
+      gpuSelMethod: random
+      normMethod: max
+    name: Open-Gpu-Share
+  plugins:
+    bind:
+      disabled:
+      - name: DefaultBinder
+      enabled:
+      - name: Simon
+    filter:
+      enabled:
       - name: Open-Gpu-Share
-        args:
-          dimExtMethod: share
-          normMethod: max
-          gpuSelMethod: FGDScore
+    preScore:
+      disabled:
+      - name: RandomScore
+      enabled:
+      - name: RandomScore
+    reserve:
+      enabled:
+      - name: Open-Gpu-Share
+    score:
+      disabled:
+      - name: RandomScore
+      - name: DotProductScore
+      - name: GpuClusteringScore
+      - name: GpuPackingScore
+      - name: BestFitScore
+      - name: FGDScore
+      - name: ImageLocality
+      - name: NodeAffinity
+      - name: PodTopologySpread
+      - name: TaintToleration
+      - name: NodeResourcesBalancedAllocation
+      - name: InterPodAffinity
+      - name: NodeResourcesLeastAllocated
+      - name: NodePreferAvoidPods
+      enabled:
+      - name: RandomScore
+        weight: 1000
+  schedulerName: simon-scheduler
