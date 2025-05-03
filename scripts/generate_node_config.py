@@ -17,12 +17,12 @@ def generate_node_configs(target_path, num_nodes, start_ip="192.168.0.100", gpu_
 
     # 解析起始 IP
     ip_parts = list(map(int, start_ip.split('.')))
+    all_yaml_content = ""
 
     for i in range(num_nodes):
         node_number = i + 100
         hostname = f"pai-node-{node_number - 100:02d}"
         node_ip = '.'.join(map(str, ip_parts))
-        filename = os.path.join(target_path, f"{hostname}.yaml")
 
         # 生成 YAML 内容
         yaml_content = f"""apiVersion: v1
@@ -53,11 +53,10 @@ status:
     pods: '{pods}'
 """
 
-        # 写入文件
-        with open(filename, 'w') as f:
-            f.write(yaml_content)
-
-        print(f"Generated {filename}")
+        # 添加分隔符和当前节点的 YAML 内容
+        if all_yaml_content:
+            all_yaml_content += "---\n"
+        all_yaml_content += yaml_content
 
         # 递增 IP
         ip_parts[3] += 1
@@ -70,6 +69,14 @@ status:
                 if ip_parts[1] > 255:
                     ip_parts[1] = 0
                     ip_parts[0] += 1
+
+    # 合并后的文件路径
+    merged_filename = os.path.join(target_path, "merged_nodes.yaml")
+    # 写入合并后的 YAML 内容
+    with open(merged_filename, 'w') as f:
+        f.write(all_yaml_content)
+
+    print(f"Generated {merged_filename}")
 
 if __name__ == "__main__":
     # 自定义参数

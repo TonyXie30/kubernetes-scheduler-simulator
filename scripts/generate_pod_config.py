@@ -26,11 +26,11 @@ def generate_pod_configs(target_path, json_str):
         print(f"错误:无法解析传入的JSON字符串: {json_str}")
         return
 
+    all_yaml_content = ""
+
     for num, replicas in data.items():
         num = int(num)
         gpu_count = num
-        # 生成文件名
-        filename = os.path.join(target_path, f"gpu-rs-{num}.yaml")
 
         # 生成YAML内容
         yaml_content = f"""apiVersion: apps/v1
@@ -66,11 +66,18 @@ spec:
       hostNetwork: true
 """
 
-        # 写入文件
-        with open(filename, 'w') as f:
-            f.write(yaml_content)
+        # 添加分隔符和当前 Pod 的 YAML 内容
+        if all_yaml_content:
+            all_yaml_content += "---\n"
+        all_yaml_content += yaml_content
 
-        print(f"Generated {filename}")
+    # 合并后的文件路径
+    merged_filename = os.path.join(target_path, "merged_pods.yaml")
+    # 写入合并后的 YAML 内容
+    with open(merged_filename, 'w') as f:
+        f.write(all_yaml_content)
+
+    print(f"Generated {merged_filename}")
 
     return data
 
@@ -130,4 +137,3 @@ if __name__ == "__main__":
 
     if data:
         plot_gpu_cdf(data)
-
