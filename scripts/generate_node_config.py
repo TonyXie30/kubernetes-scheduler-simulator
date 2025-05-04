@@ -3,17 +3,8 @@ import shutil
 import sys
 
 def generate_node_configs(target_path, num_nodes, start_ip="192.168.0.100", gpu_card_model="V100", gpu_count=8, cpu=192, memory="1505762Mi", pods=110):
-    # 确保目标路径存在，如果路径不为空先删除路径下文件
-    if os.path.exists(target_path):
-        for root, dirs, files in os.walk(target_path, topdown=False):
-            for file in files:
-                file_path = os.path.join(root, file)
-                os.remove(file_path)
-            for dir in dirs:
-                dir_path = os.path.join(root, dir)
-                shutil.rmtree(dir_path)
-    else:
-        os.makedirs(target_path)
+
+    os.makedirs(target_path,exist_ok=True)
 
     # 解析起始 IP
     ip_parts = list(map(int, start_ip.split('.')))

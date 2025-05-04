@@ -8,16 +8,7 @@ import numpy as np
 
 def generate_pod_configs(target_path, json_str):
     # 确保目标路径存在，如果路径不为空先删除路径下文件
-    if os.path.exists(target_path):
-        for root, dirs, files in os.walk(target_path, topdown=False):
-            for file in files:
-                file_path = os.path.join(root, file)
-                os.remove(file_path)
-            for dir in dirs:
-                dir_path = os.path.join(root, dir)
-                shutil.rmtree(dir_path)
-    else:
-        os.makedirs(target_path)
+    os.makedirs(target_path,exist_ok=True)
 
     try:
         # 将JSON字符串解析为Python字典
@@ -82,7 +73,7 @@ spec:
     return data
 
 
-def plot_gpu_cdf(data):
+def plot_gpu_cdf(data,outputPath):
     # 提取所有 pod 需求的 GPU 数目
     gpu_demands = []
     for num, replicas in data.items():
@@ -109,31 +100,32 @@ def plot_gpu_cdf(data):
     plt.yticks(fontsize=16)
 
     # 保存图片
-    j = 1
-    while True:
-        save_dir = f'datas/test_group_{j}'
-        if os.path.exists(save_dir) and os.listdir(save_dir):
-            j += 1
-        else:
-            break
+    # j = 1
+    # while True:
+    #     save_dir = f'datas/test_group_{j}'
+    #     if os.path.exists(save_dir) and os.listdir(save_dir):
+    #         j += 1
+    #     else:
+    #         break
 
     # 创建目录
-    os.makedirs(save_dir, exist_ok=True)
+    os.makedirs(outputPath, exist_ok=True)
 
     # 保存图片
-    save_path = os.path.join(save_dir, 'gpu_demand_cdf.png')
+    save_path = os.path.join(outputPath, 'gpu_demand_cdf.png')
     plt.savefig(save_path, dpi=300)
     print(f"CDF 图已保存为 {save_path}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print("请提供目标路径和 JSON 字符串作为参数")
         sys.exit(1)
 
     target_path = sys.argv[1]
     json_str = sys.argv[2]
+    output_path = sys.argv[3]
     data = generate_pod_configs(target_path, json_str)
 
     if data:
-        plot_gpu_cdf(data)
+        plot_gpu_cdf(data,output_path)

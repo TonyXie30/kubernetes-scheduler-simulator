@@ -16,7 +16,7 @@ __pycache__
 bin/*
 
 tony/*
-
+tmp/*
 logs/*
 datas/*
 
