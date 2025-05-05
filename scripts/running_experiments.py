@@ -169,7 +169,9 @@ def generate_pod_cfg(pod_distribution):
 
     return yaml_string
 
-def generate_cluster_cfg(cluster_path:str,export_path:str,checkpointOrNot:bool):
+def generate_cluster_cfg(cluster_path:str,export_path:str,checkpointOrNot:bool,schedule_type:str):
+    snapshot_export_path = os.path.join(export_path,schedule_type,"check" if checkpointOrNot else "noncheck")
+    os.makedirs(snapshot_export_path,exist_ok=True)
     return f"""apiVersion: simon/v1alpha1
 kind: Config
 metadata:
@@ -183,8 +185,8 @@ spec:
       ratio: {'1' if checkpointOrNot else '0.0'}
       policy: "binPacking"
     exportConfig:
-      nodeSnapshotCSVFilePrefix: {export_path}
-      podSnapshotYamlFilePrefix: {export_path}
+      nodeSnapshotCSVFilePrefix: {snapshot_export_path}
+      podSnapshotYamlFilePrefix: {snapshot_export_path}
     newWorkloadConfig: null
     shufflePod: true
     typicalPodsConfig:
@@ -218,7 +220,7 @@ def save_yaml_files(input_cfg_path, schedule_type, pod_distribution, cluster_pat
         f.write(pod_yaml)
 
     # 生成集群配置
-    cluster_yaml = generate_cluster_cfg(cluster_path, export_path, checkpointOrNot)
+    cluster_yaml = generate_cluster_cfg(cluster_path, export_path, checkpointOrNot, schedule_type)
     cluster_file_path = os.path.join(input_cfg_path, "test-cluster-config.yaml")
     with open(cluster_file_path, 'w') as f:
         f.write(cluster_yaml)
