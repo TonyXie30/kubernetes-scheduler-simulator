@@ -130,6 +130,8 @@ def plot_line_chart(all_group_results, output_dir):
     plt.savefig(output_path)
     plt.close()
 
+from scipy.interpolate import interp1d
+
 def plot_gpu_cdf(group_dir):
     file_paths = [
         os.path.join(group_dir, 'fgd', 'check', 'PostDeschedule', 'node-snapshot.csv'),
@@ -139,10 +141,10 @@ def plot_gpu_cdf(group_dir):
     ]
     labels = ["Fw", "Fwo", "Rw", "Rwo"]
     colors = ['#3a923a', '#e1812c', '#3274a1', '#c03d3e']
-    line_width = 1  # 进一步调细线条
     linestyles = ['-', '--', '-.', ':']  # 定义不同的线条样式
+    num_interpolation_points = 500  # 插值点数
 
-    for file_path, label, color, linestyle in zip(file_paths, labels, colors, linestyles):
+    for file_path, label, color in zip(file_paths, labels, colors):
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
             gpu_usage_sums = []
@@ -154,8 +156,14 @@ def plot_gpu_cdf(group_dir):
             sorted_gpu_usage = np.sort(gpu_usage_sums)
             cdf = np.arange(1, len(sorted_gpu_usage) + 1) / len(sorted_gpu_usage)
 
-            plt.plot(sorted_gpu_usage, cdf, marker='o', label=label, color=color,
-                     linewidth=line_width, linestyle=linestyle)
+            # 进行插值以得到平滑曲线
+            f = interp1d(sorted_gpu_usage, cdf, kind='linear')
+            new_x = np.linspace(sorted_gpu_usage.min(), sorted_gpu_usage.max(), num_interpolation_points)
+            new_y = f(new_x)
+
+            # 绘制平滑曲线
+            plt.plot(new_x, new_y, label=label, color=color,
+                     linestyle=linestyles[labels.index(label)])
         else:
             print(f"文件 {file_path} 不存在，跳过。")
 
