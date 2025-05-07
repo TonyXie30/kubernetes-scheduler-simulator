@@ -23,6 +23,7 @@ func (sim *Simulator) DescheduleCluster() []simontype.UnscheduledPod {
 	podMap := sim.getCurrentPodMap()
 
 	nodeStatus := sim.GetClusterNodeStatus() // Note: the resources in nodeStatus.Node is the capacity instead of requests
+	podDistribution := sim.GetPodDistribution()
 	nodeResMap := utils.GetNodeResourceMap(nodeStatus)
 
 	var failedPods []simontype.UnscheduledPod
@@ -41,7 +42,7 @@ func (sim *Simulator) DescheduleCluster() []simontype.UnscheduledPod {
 		failedPods = sim.descheduleClusterOnFragMultiPod(numPodsToDeschedule, nodeStatus, nodeResMap, podMap)
 
 	case DeschedulePolicyBinPacking:
-		failedPods = sim.descheduleClusterOnBinPacking(numPodsToDeschedule, nodeStatus, nodeResMap, podMap)
+		failedPods = sim.descheduleClusterOnBinPacking(numPodsToDeschedule, nodeStatus, nodeResMap, podMap, podDistribution)
 
 	default:
 		log.Errorf("DeschedulePolicy not found\n")
@@ -183,81 +184,93 @@ func (sim *Simulator) descheduleClusterOnFragMultiPod(numPodsToDeschedule int, n
 }
 
 func (sim *Simulator) descheduleClusterOnBinPacking(numPodsToDeschedule int, nodeStatus []simontype.NodeStatus,
-	nodeResMap map[string]simontype.NodeResource, podMap map[string]*corev1.Pod) []simontype.UnscheduledPod {
-	// 按资源需求从大到小排序 Pod
-	podList := make([]*corev1.Pod, 0, len(podMap))
-	for _, pod := range podMap {
-		podList = append(podList, pod)
-	}
-	sort.Slice(podList, func(i, j int) bool {
-		podResI := utils.GetPodResource(podList[i])
-		podResJ := utils.GetPodResource(podList[j])
-		return (podResI.MilliCpu > podResJ.MilliCpu) || (podResI.MilliCpu == podResJ.MilliCpu && podResI.MilliGpu > podResJ.MilliGpu)
-	})
+    nodeResMap map[string]simontype.NodeResource, podMap map[string]*corev1.Pod, gpuPodRatios map[int]float64) []simontype.UnscheduledPod {
+    // 按资源需求从大到小排序 Pod
+    podList := make([]*corev1.Pod, 0, len(podMap))
+    for _, pod := range podMap {
+        podList = append(podList, pod)
+    }
+    sort.Slice(podList, func(i, j int) bool {
+        podResI := utils.GetPodResource(podList[i])
+        podResJ := utils.GetPodResource(podList[j])
+        return (podResI.MilliCpu > podResJ.MilliCpu) || (podResI.MilliCpu == podResJ.MilliCpu && podResI.MilliGpu > podResJ.MilliGpu)
+    })
 
-	var descheduledPodKeys []string
-	// 为每个 Pod 增加重试次数
-	maxRetries := 3
+    var descheduledPodKeys []string
+    // 为每个 Pod 增加重试次数
+    maxRetries := 3
 
-	for _, pod := range podList {
-		if numPodsToDeschedule <= 0 {
-			break
-		}
+    for _, pod := range podList {
+        if numPodsToDeschedule <= 0 {
+            break
+        }
 
-		retryCount := 0
-		for retryCount < maxRetries {
-			var bestFitNodeName string
-			var minRemainingRes int64 = math.MaxInt64
-			podRes := utils.GetPodResource(pod)
+        retryCount := 0
+        for retryCount < maxRetries {
+            var bestFitNodeName string
+            var minRemainingRes int64 = math.MaxInt64
+            podRes := utils.GetPodResource(pod)
 
-			// 遍历所有节点，寻找最佳适配节点
-			for _, ns := range nodeStatus {
-				nodeName := ns.Node.Name
-				nodeRes := nodeResMap[nodeName]
+            // 计算当前 Pod 需求的 GPU 数量
+            podGpuDemand := int(podRes.MilliGpu / 1000) // 假设 MilliGpu 是毫核数，转换为整数个 GPU
 
-				if nodeRes.MilliCpuLeft >= podRes.MilliCpu && canAllocateGpu(nodeRes.MilliGpuLeftList, podRes.MilliGpu) {
-					// 计算分配资源后剩余的总资源
-					remainingGpuList := make([]int64, len(nodeRes.MilliGpuLeftList))
-					copy(remainingGpuList, nodeRes.MilliGpuLeftList)
-					allocateGpu(&remainingGpuList, podRes.MilliGpu)
-					remainingGpu := sum(remainingGpuList)
-					remainingRes := remainingGpu
+            // 根据任务分布调整节点选择的优先级
+            var nodePriority map[string]float64 = make(map[string]float64)
+            for _, ns := range nodeStatus {
+                nodeName := ns.Node.Name
+                nodeRes := nodeResMap[nodeName]
 
-					// 更新最佳适配节点
-					if remainingRes < minRemainingRes {
-						minRemainingRes = remainingRes
-						bestFitNodeName = nodeName
-					}
-				}
-			}
+                if nodeRes.MilliCpuLeft >= podRes.MilliCpu && canAllocateGpu(nodeRes.MilliGpuLeftList, podRes.MilliGpu) {
+                    // 计算分配资源后剩余的总资源
+                    remainingGpuList := make([]int64, len(nodeRes.MilliGpuLeftList))
+                    copy(remainingGpuList, nodeRes.MilliGpuLeftList)
+                    allocateGpu(&remainingGpuList, podRes.MilliGpu)
+                    remainingGpu := sum(remainingGpuList)
+                    remainingRes := remainingGpu
 
-			if bestFitNodeName != "" {
-				// 从原节点删除 Pod
-				if err := sim.deletePod(pod); err != nil {
-					log.Errorf("[descheduleClusterOnBinPacking] Failed to delete pod(%s) on attempt %d: %v\n",
-						utils.GeneratePodKey(pod), retryCount+1, err)
-				} else {
-					descheduledPodKeys = append(descheduledPodKeys, utils.GeneratePodKey(pod))
-					numPodsToDeschedule -= 1
-					// 更新节点资源
-					nodeRes := nodeResMap[bestFitNodeName]
-					nodeRes.MilliCpuLeft -= podRes.MilliCpu
-					allocateGpu(&nodeRes.MilliGpuLeftList, podRes.MilliGpu)
-					nodeResMap[bestFitNodeName] = nodeRes
-					break
-				}
-			}
+                    // 根据任务分布计算节点优先级
+                    if ratio, ok := gpuPodRatios[podGpuDemand]; ok {
+                        // 剩余资源越少，任务占比越高，优先级越高
+                        nodePriority[nodeName] = float64(remainingRes) / ratio
+                    } else {
+                        nodePriority[nodeName] = float64(remainingRes)
+                    }
 
-			retryCount++
-			log.Infof("[descheduleClusterOnBinPacking] Retrying to deschedule pod(%s), attempt %d\n",
-				utils.GeneratePodKey(pod), retryCount)
-		}
-	}
+                    // 更新最佳适配节点
+                    if int64(nodePriority[nodeName]) < minRemainingRes {
+                        minRemainingRes = int64(nodePriority[nodeName])
+                        bestFitNodeName = nodeName
+                    }
+                }
+            }
 
-	sim.ClusterAnalysis(TagPostEviction)
-	descheduledPod := getPodfromPodMap(descheduledPodKeys, podMap)
-	log.Infof("[DescheduleCluster] Num of Descheduled Pods: %d\n", len(descheduledPod))
-	return sim.SchedulePods(descheduledPod)
+            if bestFitNodeName != "" {
+                // 从原节点删除 Pod
+                if err := sim.deletePod(pod); err != nil {
+                    log.Errorf("[descheduleClusterOnBinPacking] Failed to delete pod(%s) on attempt %d: %v\n",
+                        utils.GeneratePodKey(pod), retryCount+1, err)
+                } else {
+                    descheduledPodKeys = append(descheduledPodKeys, utils.GeneratePodKey(pod))
+                    numPodsToDeschedule -= 1
+                    // 更新节点资源
+                    nodeRes := nodeResMap[bestFitNodeName]
+                    nodeRes.MilliCpuLeft -= podRes.MilliCpu
+                    allocateGpu(&nodeRes.MilliGpuLeftList, podRes.MilliGpu)
+                    nodeResMap[bestFitNodeName] = nodeRes
+                    break
+                }
+            }
+
+            retryCount++
+            log.Infof("[descheduleClusterOnBinPacking] Retrying to deschedule pod(%s), attempt %d\n",
+                utils.GeneratePodKey(pod), retryCount)
+        }
+    }
+
+    sim.ClusterAnalysis(TagPostEviction)
+    descheduledPod := getPodfromPodMap(descheduledPodKeys, podMap)
+    log.Infof("[DescheduleCluster] Num of Descheduled Pods: %d\n", len(descheduledPod))
+    return sim.SchedulePods(descheduledPod)
 }
 
 // 优化后的辅助函数：计算列表元素的总和

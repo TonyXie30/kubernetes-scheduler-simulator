@@ -149,56 +149,19 @@ func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontyp
 	data := make([]float64, len(FragRatioDataMap))
 	fragAmount := NewFragAmount(nodeRes.NodeName, data)
 
-	// 期望计算
-	var expectation float64;
-	for k, v := range gpuPodRatios {
-		expectation += float64(k * int(v))
+	// 计算平均 GPU 需求
+	var avgGpuDemand float64
+	for gpuReq, ratio := range gpuPodRatios {
+		avgGpuDemand += float64(gpuReq) * ratio
 	}
 
-	// alpha := 0.5
-	// beta := 0.5
-
-	// // 计算平均 GPU 需求
-	// var avgGpuDemand float64
-	// for gpuReq, ratio := range gpuPodRatios {
-	// 	avgGpuDemand += float64(gpuReq) * ratio
-	// }
-
-	// // 计算资源分配不均衡度 D
+	// 计算资源分配不均衡度 D
 	// var imbalanceDegree float64
 	// for gpuReq, ratio := range gpuPodRatios {
 	// 	imbalanceDegree += ratio * math.Pow(float64(gpuReq)-avgGpuDemand, 2)
 	// }
 
-	// // 计算资源浪费比例 Fw
-	// var totalWaste float64
-	// var totalAllocated float64
-	// // 这里假设实际分配量可以从 nodeRes 和 podRes 中获取，需要根据实际情况调整
-	// for _, pod := range typicalPods {
-	// 	podRes := pod.TargetPodResource
-	// 	// 假设实际分配的 GPU 资源量，这里需要根据实际逻辑修改
-	// 	// 这里简单假设实际分配量等于节点剩余资源能满足的最大量
-	// 	allocatedGpu := int64(0)
-	// 	for _, gpuMilliLeft := range nodeRes.MilliGpuLeftList {
-	// 		if gpuMilliLeft >= podRes.MilliGpu {
-	// 			allocatedGpu += podRes.MilliGpu
-	// 		}
-	// 	}
-	// 	waste := allocatedGpu - podRes.MilliGpu
-	// 	if waste < 0 {
-	// 		waste = 0
-	// 	}
-	// 	totalWaste += float64(waste) * pod.Percentage
-	// 	totalAllocated += float64(allocatedGpu) * pod.Percentage
-	// }
-	// var wasteRatio float64
-	// if totalAllocated > 0 {
-	// 	wasteRatio = totalWaste / totalAllocated
-	// }
-
-	// // 计算综合碎片化度量 F
-	// fragmentationRate := alpha*imbalanceDegree + beta*wasteRatio
-	fragmentationRate := expectation
+	fragmentationRate := avgGpuDemand 
 
 	for _, pod := range typicalPods {
 		freq := pod.Percentage
@@ -212,7 +175,7 @@ func NodeGpuShareFragAmount(nodeRes simontype.NodeResource, typicalPods simontyp
 			gpuFragMilli := GetGpuFragMilliByNodeResAndPodRes(nodeRes, pod.TargetPodResource)
 			fragAmount.AddByFragType(Q2LackGpu, freq*float64(gpuFragMilli))
 			// 将综合碎片化度量添加到 Q3Satisfied 中
-			fragAmount.AddByFragType(Q3Satisfied, freq*float64(gpuMilliLeftTotal-gpuFragMilli) + fragmentationRate * 1000)
+			fragAmount.AddByFragType(Q3Satisfied, freq*float64(gpuMilliLeftTotal-gpuFragMilli) + fragmentationRate * 500)
 		} else { // Q1, Q2, XL, XR, NA => all idle GPU resources are treated as fragment
 			fragAmount.AddByFragType(fragType, freq*float64(gpuMilliLeftTotal))
 		}
