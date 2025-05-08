@@ -93,6 +93,9 @@ def generate_schedule_cfg(schedule_type):
     elif schedule_type == "fgd":
         schedule_plugin_name = "FGDScore"
         gpu_select_method = "FGDScore"
+    elif schedule_type == "bestfit":
+        schedule_plugin_name = "BestFitScore"
+        gpu_select_method = "best"
     else:
         print("Wrong schedule type")
         sys.exit(1)
@@ -242,12 +245,13 @@ if __name__ == "__main__":
     save_yaml_files(os.path.join(input_cfg_path,"Random-without-deschedule-config"),"random",pod_distribution,cluster_path,output_file_path,False)
     save_yaml_files(os.path.join(input_cfg_path,"FGD-with-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,True)
     save_yaml_files(os.path.join(input_cfg_path,"FGD-without-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,False)
-
+    save_yaml_files(os.path.join(input_cfg_path,"BestFit-with-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,True)
+    save_yaml_files(os.path.join(input_cfg_path,"BestFit-without-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,False)
 
     # 原有的命令参数
     commands = [
     {
-        "name": "Rw",
+        "name": "Random+checkpoint",
         "args": [
             "bin/simon", "apply", "--extended-resources", "gpu",
             "-f", os.path.join(input_cfg_path, "Random-with-deschedule-config", "test-cluster-config.yaml"),
@@ -256,7 +260,7 @@ if __name__ == "__main__":
         ]
     },
     {
-        "name": "Rwo",
+        "name": "Random",
         "args": [
             "bin/simon", "apply", "--extended-resources", "gpu",
             "-f", os.path.join(input_cfg_path, "Random-without-deschedule-config", "test-cluster-config.yaml"),
@@ -265,7 +269,7 @@ if __name__ == "__main__":
         ]
     },
     {
-        "name": "Fw",
+        "name": "FGD+checkpoint",
         "args": [
             "bin/simon", "apply", "--extended-resources", "gpu",
             "-f", os.path.join(input_cfg_path, "FGD-with-deschedule-config", "test-cluster-config.yaml"),
@@ -274,12 +278,30 @@ if __name__ == "__main__":
         ]
     },
     {
-        "name": "Fwo",
+        "name": "FGD",
         "args": [
             "bin/simon", "apply", "--extended-resources", "gpu",
             "-f", os.path.join(input_cfg_path, "FGD-without-deschedule-config", "test-cluster-config.yaml"),
             "-s", os.path.join(input_cfg_path, "FGD-without-deschedule-config", "test-scheduler-config.yaml"),
             "-p", os.path.join(input_cfg_path, "FGD-without-deschedule-config", "test-pod-distribution-config.yaml")
+        ]
+    },
+    {
+        "name": "BestFit+checkpoint",
+        "args": [
+            "bin/simon", "apply", "--extended-resources", "gpu",
+            "-f", os.path.join(input_cfg_path, "BestFit-with-deschedule-config", "test-cluster-config.yaml"),
+            "-s", os.path.join(input_cfg_path, "BestFit-with-deschedule-config", "test-scheduler-config.yaml"),
+            "-p", os.path.join(input_cfg_path, "BestFit-with-deschedule-config", "test-pod-distribution-config.yaml")
+        ]
+    },
+    {
+        "name": "BestFit",
+        "args": [
+            "bin/simon", "apply", "--extended-resources", "gpu",
+            "-f", os.path.join(input_cfg_path, "BestFit-without-deschedule-config", "test-cluster-config.yaml"),
+            "-s", os.path.join(input_cfg_path, "BestFit-without-deschedule-config", "test-scheduler-config.yaml"),
+            "-p", os.path.join(input_cfg_path, "BestFit-without-deschedule-config", "test-pod-distribution-config.yaml")
         ]
     }
 ]

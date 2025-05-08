@@ -52,7 +52,7 @@ def extract_gpu_schedule(all_group_results):
         allo_dict = group_result["allo_dict"]
         quad_dict = group_result["quad_dict"]
 
-        for key in ["Rw", "Rwo", "Fw", "Fwo"]:
+        for key in ["Random+checkpoint", "Random", "FGD+checkpoint", "FGD", "BestFit+checkpoint", "BestFit"]:
             # 提取 allo_dict 中的 gpu 调度数据
             if "gpu_post_deschedule" in allo_dict[key]:
                 group_extracted_allo[key] = allo_dict[key]["gpu_post_deschedule"]
@@ -92,8 +92,8 @@ def plot_line_chart(all_group_results, output_dir):
     x_tick_values = [x_tick_values[i] for i in sorted_indices]
     x_tick_labels = [x_tick_labels[i] for i in sorted_indices]
 
-    labels = ["Rwo", "Rw", "Fwo", "Fw"]
-    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a']
+    labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
+    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
 
     # 计算最大数据占比
     max_percentage = max(x_tick_values) * 100
@@ -137,11 +137,13 @@ def plot_gpu_cdf(group_dir):
         os.path.join(group_dir, 'fgd', 'check', 'PostDeschedule', 'node-snapshot.csv'),
         os.path.join(group_dir, 'fgd', 'noncheck', 'InitSchedule', 'node-snapshot.csv'),
         os.path.join(group_dir, 'random', 'check', 'PostDeschedule', 'node-snapshot.csv'),
-        os.path.join(group_dir, 'random', 'noncheck', 'InitSchedule', 'node-snapshot.csv')
+        os.path.join(group_dir, 'random', 'noncheck', 'InitSchedule', 'node-snapshot.csv'),
+        os.path.join(group_dir, 'bestfit', 'check', 'PostDeschedule', 'node-snapshot.csv'),
+        os.path.join(group_dir, 'bestfit', 'noncheck', 'InitSchedule', 'node-snapshot.csv')
     ]
-    labels = ["Fw", "Fwo", "Rw", "Rwo"]
-    colors = ['#3a923a', '#e1812c', '#3274a1', '#c03d3e']
-    linestyles = ['-', '--', '-.', ':']  # 定义不同的线条样式
+    labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
+    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
+    linestyles = ['-', '--', '-.', ':', '-', '--']
     num_interpolation_points = 500  # 插值点数
 
     for file_path, label, color in zip(file_paths, labels, colors):
@@ -181,9 +183,9 @@ def plot_gpu_schedule(extracted_data, output_dir, plot_name):
     bar_width = 0.2
     index = np.arange(num_groups)
 
-    labels = ["Rwo", "Rw", "Fwo", "Fw"]
-    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a']
-    hatches = ['\\', '/', '|', '+']
+    labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
+    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
+    hatches = ['\\', '/', '|', '+', 'x', 'o']
 
     # 从文件夹名字中提取百分比作为 X 轴标签
     folder_names = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]

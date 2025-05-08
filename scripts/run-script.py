@@ -81,20 +81,19 @@ def run_simulation(j, loads):
         print(f"Error occurred while running node generation script: {e}")
         exit(1)
     
-    # for i in range(1,11):
-    # running_target_path = f"tmp/test_group_{j}_{workload_ratio}/{i}.json"
-    running_target_path = f"tmp/test_group_{j}_{workload_ratio}"
-    # 执行实验
-    try:
-        subprocess.run(['python3', running_script_path, running_target_path, json.dumps(current_load), f"datas/test_group_{j}_{workload_ratio}/cfg", f'datas/test_group_{j}_{workload_ratio}/cluster'])
-    except subprocess.CalledProcessError as e:
-        print(f"Error occurred while running running_experiments script: {e}")
-        exit(1)
+    for _ in range(10):
+        running_target_path = f"tmp/test_group_{j}_{workload_ratio}"
+        # 执行实验
+        try:
+            subprocess.run(['python3', running_script_path, running_target_path, json.dumps(current_load), f"datas/test_group_{j}_{workload_ratio}/cfg", f'datas/test_group_{j}_{workload_ratio}/cluster'])
+        except subprocess.CalledProcessError as e:
+            print(f"Error occurred while running running_experiments script: {e}")
+            exit(1)
 
 
 if __name__ == "__main__":
     # 获取模拟次数
-    simulation_count = 15
+    simulation_count = 10
     loads = monte_carlo_load_generation(simulation_count)
 
     # 创建进程池
