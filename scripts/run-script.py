@@ -15,6 +15,22 @@ import multiprocessing
 
 
 # 蒙特卡洛模拟生成负载配置
+# def monte_carlo_load_generation():
+#     all_loads = []
+#     target_percentages = [0.2, 0.4, 0.6, 0.8]
+
+#     for percentage in target_percentages:
+#         # 初始化负载配置
+#         load = {str(i): random.randint(10, 100) for i in range(1, 8)}
+#         # 计算其他卡数任务的总 GPU 需求
+#         other_gpu_demand = sum(int(key) * value for key, value in load.items())
+#         # 计算 8 卡任务的数量
+#         eight_gpu_demand = other_gpu_demand * percentage / (1 - percentage)
+#         eight_gpu_count = int(eight_gpu_demand / 8)
+#         load["8"] = eight_gpu_count
+#         all_loads.append(load)
+#     return all_loads
+
 def monte_carlo_load_generation(num_simulations=10, max_increase=30):
     initial_load = {str(i): 10 for i in range(1, 9)}
     all_loads = []
@@ -30,6 +46,7 @@ def monte_carlo_load_generation(num_simulations=10, max_increase=30):
         all_loads.append(new_load)
         initial_load = new_load
     return all_loads
+
 
 
 # 单个模拟任务的函数
@@ -81,7 +98,7 @@ def run_simulation(j, loads):
         print(f"Error occurred while running node generation script: {e}")
         exit(1)
     
-    for _ in range(1):
+    for _ in range(3):
         running_target_path = f"tmp/test_group_{j}_{workload_ratio}"
         # 执行实验
         try:
@@ -93,8 +110,8 @@ def run_simulation(j, loads):
 
 if __name__ == "__main__":
     # 获取模拟次数
-    simulation_count = 1
-    loads = monte_carlo_load_generation(simulation_count)
+    simulation_count = 4
+    loads = monte_carlo_load_generation()
 
     # 创建进程池
     pool = multiprocessing.Pool()

@@ -182,50 +182,47 @@ def plot_gpu_schedule(extracted_data, output_dir, plot_name):
     colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
     hatches = ['\\', '/', '|', '+', 'x', 'o']
 
-    avg_values = []
-    for label in labels:
-        # 计算每个 label 在所有 groups 中的平均值
-        values = [data[label] for data in extracted_data]
-        avg_value = sum(values) / len(values) if values else 0
-        avg_values.append(avg_value)
-
     bar_width = 0.8
     index = np.arange(len(labels))
 
-    bars = plt.bar(index, avg_values, width=bar_width, label=labels, color=colors,
-            edgecolor='black',
-            linewidth=1,
-            hatch=hatches)
+    for group_idx, data in enumerate(extracted_data):
+        values = [data[label] for label in labels]
 
-    # 在每个柱子上标注数值
-    for bar in bars:
-        height = bar.get_height()
-        plt.annotate(f'{height:.2f}',
-                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                     xytext=(0, 3),  # 3 points vertical offset
-                     textcoords="offset points",
-                     ha='center', va='bottom',
-                     fontsize=10)
+        plt.figure()
+        bars = plt.bar(index, values, width=bar_width, label=labels, color=colors,
+                       edgecolor='black',
+                       linewidth=1,
+                       hatch=hatches)
 
-    plt.xlabel('Scheduling Method', fontsize=14)
-    if plot_name == 'GPU Schedule':
-        plt.ylabel('Allocated GPU Valve (%)', fontsize=14)
-    elif plot_name == 'Q2 Lack GPU':
-        plt.ylabel('Lack GPU Percentage (%)', fontsize=14)
-    elif plot_name == 'Frag GPU Milli':
-        plt.ylabel('Fragmentated GPU Percentage (%)', fontsize=14)
-    plt.title(f'Average {plot_name} Comparison', fontsize=16)
-    # 将 x 轴标签正常放置在下方
-    plt.xticks(index, labels, fontsize=12, rotation=0)
-    plt.yticks(fontsize=12)
+        # 在每个柱子上标注数值
+        for bar in bars:
+            height = bar.get_height()
+            plt.annotate(f'{height:.2f}',
+                         xy=(bar.get_x() + bar.get_width() / 2, height),
+                         xytext=(0, 3),  # 3 points vertical offset
+                         textcoords="offset points",
+                         ha='center', va='bottom',
+                         fontsize=10)
 
-    # 设置图例位置为右上角
-    plt.legend(fontsize=12, loc='upper right')
+        plt.xlabel('Scheduling Method', fontsize=14)
+        if plot_name == 'GPU Schedule':
+            plt.ylabel('Allocated GPU Value (%)', fontsize=14)
+        elif plot_name == 'Q2 Lack GPU':
+            plt.ylabel('Lack GPU Percentage (%)', fontsize=14)
+        elif plot_name == 'Frag GPU Milli':
+            plt.ylabel('Frag GPU Value (%)', fontsize=14)
+        plt.title(f'Average Frag Value Comparison', fontsize=16)
+        # plt.xticks(index, labels, fontsize=12, rotation=45)
+        plt.yticks(fontsize=12)
 
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f'Average_{plot_name}_comparison.png')
-    plt.savefig(output_path)
-    plt.close()
+        # 设置图例位置为右上角
+        plt.legend(fontsize=12)
+
+        os.makedirs(output_dir, exist_ok=True)
+        output_path = os.path.join(output_dir, f'{plot_name}_comparison_group_{group_idx + 1}.png')
+        plt.savefig(output_path)
+        plt.close()
+
 
 def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, output_dir):
     labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
@@ -281,7 +278,62 @@ def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, 
     # 绘制 Frag GPU Milli 折线图
     plot_with_horizontal_and_vertical_lines(extracted_data_frag, 'Frag GPU Value (%)', 'Frag GPU Value Change', os.path.join(output_dir, 'frag_gpu_milli_change_line_chart.png'))
 
+def plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, output_dir):
+    labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
+    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
+    hatches = ['\\', '/', '|', '+', 'x', 'o']
 
+    # 假设 test_groups 目录名包含比例信息，提取并排序
+    x_percentages = [float(os.path.basename(group).split('_')[-1]) * 100 for group in test_groups]
+    sorted_indices = np.argsort(x_percentages)
+    sorted_test_groups = [test_groups[i] for i in sorted_indices]
+    x_labels = ["20%", "40%", "60%", "80%"]
+
+    # 设置图片大小，与前面图形保持一致
+    plt.rcParams['figure.figsize'] = (10, 6)
+
+    def plot_single_grouped_bar(data, ylabel, title, output_path):
+        num_groups = len(x_labels)
+        num_bars_per_group = len(labels)
+        bar_width = 0.8 / num_bars_per_group
+        index = np.arange(num_groups)
+        bars = []
+
+        for i, label in enumerate(labels):
+            sorted_values = [data[j][label] for j in sorted_indices]
+            bar = plt.bar(index + i * bar_width, sorted_values, width=bar_width, label=label, color=colors[i],
+                          edgecolor='black', linewidth=1, hatch=hatches[i])
+            bars.append(bar)
+
+        # 为每个 group 的最后一个柱状图添加数值标注
+        for group_idx in range(num_groups):
+            last_bar = bars[-1][group_idx]
+            height = last_bar.get_height()
+            plt.annotate(f'{height:.2f}',
+                         xy=(last_bar.get_x() + last_bar.get_width() / 2, height),
+                         xytext=(0, 3),  # 3 points vertical offset
+                         textcoords="offset points",
+                         ha='center', va='bottom',
+                         fontsize=12)
+
+        plt.xlabel('Workload', fontsize=16)
+        plt.ylabel(ylabel, fontsize=16)
+        plt.title(title, fontsize=16)
+        plt.xticks(index + (num_bars_per_group - 1) * bar_width / 2, x_labels, fontsize=14, rotation=45)
+        plt.yticks(fontsize=14)
+        plt.legend(fontsize=14, loc='upper right')
+
+        # 自动调整布局
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+
+    # 绘制 GPU Schedule 分组柱状图
+    plot_single_grouped_bar(extracted_data_allo, 'Allocated GPU Value (%)', 'GPU Schedule Value Comparison for Test Groups',
+                            os.path.join(output_dir, 'gpu_schedule_grouped_bar_chart.png'))
+    # 绘制 Frag GPU Milli 分组柱状图
+    plot_single_grouped_bar(extracted_data_frag, 'Frag GPU Value (%)', 'Frag GPU Value Comparison for Test Groups',
+                            os.path.join(output_dir, 'frag_gpu_milli_grouped_bar_chart.png'))
 
 
 if __name__ == "__main__":
@@ -303,4 +355,4 @@ if __name__ == "__main__":
     plot_gpu_schedule(extracted_data_q2, data_directory, 'Q2 Lack GPU')
     plot_gpu_schedule(extracted_data_frag, data_directory, 'Frag GPU Milli')
     plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
-
+    plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
