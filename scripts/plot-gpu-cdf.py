@@ -3,6 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.interpolate import interp1d
 
 def calculate_average_in_group(group_dir):
     group_results = {
@@ -13,7 +14,7 @@ def calculate_average_in_group(group_dir):
     }
     file_count = 0
 
-    for root, dirs, files in os.walk(group_dir):
+    for root, _, files in os.walk(group_dir):  # 忽略未使用的 dirs 变量
         for file in files:
             if file.endswith('.json'):
                 file_path = os.path.join(root, file)
@@ -55,9 +56,9 @@ def extract_gpu_schedule(all_group_results):
         for key in ["Random+checkpoint", "Random", "FGD+checkpoint", "FGD", "BestFit+checkpoint", "BestFit"]:
             # 提取 allo_dict 中的 gpu 调度数据
             if "gpu_post_deschedule" in allo_dict[key]:
-                group_extracted_allo[key] = allo_dict[key]["gpu_post_deschedule"]
+                group_extracted_allo[key] = allo_dict[key]["milli_gpu_post_deschedule"]
             elif "gpu_init_schedule" in allo_dict[key]:
-                group_extracted_allo[key] = allo_dict[key]["gpu_init_schedule"]
+                group_extracted_allo[key] = allo_dict[key]["milli_gpu_init_schedule"]
             else:
                 group_extracted_allo[key] = 0
 
@@ -130,8 +131,6 @@ def plot_line_chart(all_group_results, output_dir):
     plt.savefig(output_path)
     plt.close()
 
-from scipy.interpolate import interp1d
-
 def plot_gpu_cdf(group_dir):
     file_paths = [
         os.path.join(group_dir, 'fgd', 'check', 'PostDeschedule', 'node-snapshot.csv'),
@@ -150,7 +149,7 @@ def plot_gpu_cdf(group_dir):
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
             gpu_usage_sums = []
-            for index, row in df.iterrows():
+            for _, row in df.iterrows():  # 忽略未使用的 index 变量
                 gpu_milli_left_sum = sum([row[f'gpu_milli_left_{i}'] for i in range(8)])
                 gpu_usage_sums.append(gpu_milli_left_sum // 1000)
 
@@ -179,50 +178,110 @@ def plot_gpu_cdf(group_dir):
     plt.close()
 
 def plot_gpu_schedule(extracted_data, output_dir, plot_name):
-    num_groups = len(extracted_data)
-    bar_width = 0.2
-    index = np.arange(num_groups)
-
     labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
     colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
     hatches = ['\\', '/', '|', '+', 'x', 'o']
 
-    # 从文件夹名字中提取百分比作为 X 轴标签
-    folder_names = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
-    x_tick_values = [float(folder_name.split('_')[-1]) for folder_name in folder_names]
-    x_tick_labels = [f"{value * 100:.0f}%" for value in x_tick_values]
-
-    # 根据百分比从小到大排序
-    sorted_indices = np.argsort(x_tick_values)
-    x_tick_values = [x_tick_values[i] for i in sorted_indices]
-    x_tick_labels = [x_tick_labels[i] for i in sorted_indices]
-    extracted_data = [extracted_data[i] for i in sorted_indices]
-
-    for i, label in enumerate(labels):
+    avg_values = []
+    for label in labels:
+        # 计算每个 label 在所有 groups 中的平均值
         values = [data[label] for data in extracted_data]
-        plt.bar(index + i * bar_width, values, width=bar_width, label=label, color=colors[i],
-                edgecolor='black',
-                linewidth=1,
-                hatch=hatches[i])
+        avg_value = sum(values) / len(values) if values else 0
+        avg_values.append(avg_value)
 
-    plt.xlabel('Workload', fontsize=14)
+    bar_width = 0.8
+    index = np.arange(len(labels))
+
+    bars = plt.bar(index, avg_values, width=bar_width, label=labels, color=colors,
+            edgecolor='black',
+            linewidth=1,
+            hatch=hatches)
+
+    # 在每个柱子上标注数值
+    for bar in bars:
+        height = bar.get_height()
+        plt.annotate(f'{height:.2f}',
+                     xy=(bar.get_x() + bar.get_width() / 2, height),
+                     xytext=(0, 3),  # 3 points vertical offset
+                     textcoords="offset points",
+                     ha='center', va='bottom',
+                     fontsize=10)
+
+    plt.xlabel('Scheduling Method', fontsize=14)
     if plot_name == 'GPU Schedule':
-        plt.ylabel('GPU Schedule Value', fontsize=14)
+        plt.ylabel('Allocated GPU Valve (%)', fontsize=14)
     elif plot_name == 'Q2 Lack GPU':
-        plt.ylabel('Q2 Lack GPU Percentage (%)', fontsize=14)
+        plt.ylabel('Lack GPU Percentage (%)', fontsize=14)
     elif plot_name == 'Frag GPU Milli':
-        plt.ylabel('Frag GPU Milli Percentage (%)', fontsize=14)
-    # plt.title(f'{plot_name} Comparison for Test Groups', fontsize=16)
-    plt.xticks(index + bar_width * (len(labels) - 1) / 2, x_tick_labels, fontsize=12)
+        plt.ylabel('Fragmentated GPU Percentage (%)', fontsize=14)
+    plt.title(f'Average {plot_name} Comparison', fontsize=16)
+    # 将 x 轴标签正常放置在下方
+    plt.xticks(index, labels, fontsize=12, rotation=0)
     plt.yticks(fontsize=12)
 
-    # 设置图例位置为左上角，且为 4 行 1 列布局
-    plt.legend(fontsize=12, loc='upper left', ncol=num_groups)
+    # 设置图例位置为右上角
+    plt.legend(fontsize=12, loc='upper right')
 
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f'{plot_name}_comparison.png')
+    output_path = os.path.join(output_dir, f'Average_{plot_name}_comparison.png')
     plt.savefig(output_path)
     plt.close()
+
+def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, output_dir):
+    labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
+    colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
+    linestyles = ['-.', ':', '-.', ':', '-.', ':']  # 与 plot_gpu_cdf 中的线条样式对应
+    # 假设 test_groups 目录名包含比例信息，提取并排序
+    x_percentages = [float(os.path.basename(group).split('_')[-1]) * 100 for group in test_groups]
+    sorted_indices = np.argsort(x_percentages)
+    sorted_test_groups = [test_groups[i] for i in sorted_indices]
+    x_labels = ["80%", "90%", "100%", "110%"]
+
+    # 设置图片大小，与前面图形保持一致
+    plt.rcParams['figure.figsize'] = (10, 6)
+
+    def plot_with_horizontal_and_vertical_lines(data, ylabel, title, output_path):
+        all_values = [value for sublist in data for value in sublist.values()]
+        min_value = min(all_values)
+        max_value = max(all_values)
+        # 确定水平参考线的间隔，这里设置为 10，可按需调整
+        step = 10
+        # 计算合适的参考线起始值
+        start = int(min_value // step) * step
+        end = int(max_value // step + 1) * step
+
+        plt.figure()
+        # 添加水平参考线
+        for y in range(start, end + step, step):
+            plt.axhline(y=y, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
+
+        # 添加垂直参考线
+        for x_label in x_labels:
+            x_index = x_labels.index(x_label)
+            plt.axvline(x=x_index, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
+
+        for i, label in enumerate(labels):
+            sorted_values = [data[i][label] for i in sorted_indices]
+            # 增加 linewidth 参数，将线条加粗，这里设置为 2，可按需调整
+            plt.plot(x_labels, sorted_values, label=label, marker='o', color=colors[i], linestyle=linestyles[i], linewidth=4)
+        plt.xlabel('Workload', fontsize=16)
+        plt.ylabel(ylabel, fontsize=16)
+        plt.title(title, fontsize=16)
+        plt.xticks(rotation=45, fontsize=14)
+        plt.yticks(fontsize=14)
+        plt.legend(fontsize=14)
+
+        # 自动调整布局
+        plt.tight_layout()
+        plt.savefig(output_path)
+        plt.close()
+
+    # 绘制 GPU Schedule 折线图
+    plot_with_horizontal_and_vertical_lines(extracted_data_allo, 'GPU Schedule Value (%)', 'GPU Schedule Value Change', os.path.join(output_dir, 'gpu_schedule_change_line_chart.png'))
+    # 绘制 Frag GPU Milli 折线图
+    plot_with_horizontal_and_vertical_lines(extracted_data_frag, 'Frag GPU Value (%)', 'Frag GPU Value Change', os.path.join(output_dir, 'frag_gpu_milli_change_line_chart.png'))
+
+
 
 
 if __name__ == "__main__":
@@ -239,7 +298,9 @@ if __name__ == "__main__":
         all_group_results.append(group_result)
         plot_gpu_cdf(test_group)
     extracted_data_allo, extracted_data_q2, extracted_data_frag = extract_gpu_schedule(all_group_results)
-    plot_line_chart(all_group_results,data_directory)
+    plot_line_chart(all_group_results, data_directory)
     plot_gpu_schedule(extracted_data_allo, data_directory, 'GPU Schedule')
     plot_gpu_schedule(extracted_data_q2, data_directory, 'Q2 Lack GPU')
     plot_gpu_schedule(extracted_data_frag, data_directory, 'Frag GPU Milli')
+    plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+

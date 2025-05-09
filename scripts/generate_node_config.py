@@ -32,13 +32,13 @@ metadata:
 status:
   allocatable:
     alibabacloud.com/gpu-count: '{gpu_count}'
-    alibabacloud.com/gpu-milli: '1000'
+    alibabacloud.com/gpu-milli: '{gpu_count * 1000}'
     cpu: {cpu}
     memory: {memory}
     pods: '{pods}'
   capacity:
     alibabacloud.com/gpu-count: '{gpu_count}'
-    alibabacloud.com/gpu-milli: '1000'
+    alibabacloud.com/gpu-milli: '{gpu_count * 1000}'
     cpu: {cpu}
     memory: {memory}
     pods: '{pods}'

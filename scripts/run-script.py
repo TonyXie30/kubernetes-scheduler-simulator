@@ -81,7 +81,7 @@ def run_simulation(j, loads):
         print(f"Error occurred while running node generation script: {e}")
         exit(1)
     
-    for _ in range(10):
+    for _ in range(1):
         running_target_path = f"tmp/test_group_{j}_{workload_ratio}"
         # 执行实验
         try:
@@ -93,7 +93,7 @@ def run_simulation(j, loads):
 
 if __name__ == "__main__":
     # 获取模拟次数
-    simulation_count = 10
+    simulation_count = 1
     loads = monte_carlo_load_generation(simulation_count)
 
     # 创建进程池

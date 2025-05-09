@@ -200,7 +200,7 @@ spec:
       ratio: 1
       seed: 233
     workloadTuningConfig:
-      ratio: 1.3
+      ratio: 1.1
       seed: 42
   newNode: example/newnode/gpushare
 """
