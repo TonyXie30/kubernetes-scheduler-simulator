@@ -7,7 +7,7 @@ import os
 import concurrent.futures
 import uuid
 import yaml
-
+import numpy as np
 
 def camel_to_snake(name):
     name = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
@@ -158,19 +158,46 @@ profiles:
   schedulerName: simon-scheduler
 '''
 
-def generate_pod_cfg(pod_distribution):
+def kl_divergence(p, q):
+    """
+    计算两个概率分布 p 和 q 之间的 KL 散度。
+    :param p: 实际的概率分布
+    :param q: 生成的概率分布
+    :return: KL 散度值
+    """
+    p = np.asarray(p, dtype=np.float64)
+    q = np.asarray(q, dtype=np.float64)
+    p = p / np.sum(p)
+    q = q / np.sum(q)
+    return np.sum(np.where(p != 0, p * np.log(p / q), 0))
+
+def generate_pod_cfg(pod_distribution, difference):
     pod_distribution = json.loads(pod_distribution)
     total = sum(pod_distribution.values())
+    actual_ratios = np.array([value / total for value in pod_distribution.values()])
 
-    ratios = {key: value / total for key, value in pod_distribution.items()}
+    target_kl = float(difference)
+    while True:
+        # 随机生成新的分布
+        new_distribution = np.random.rand(len(pod_distribution))
+        new_ratios = new_distribution / np.sum(new_distribution)
+        current_kl = kl_divergence(actual_ratios, new_ratios)
+        if abs(current_kl - target_kl) < 0.01:  # 允许一定的误差范围
+            break
 
+    # 将 numpy 数组元素转换为原生 Python 浮点数
+    new_ratios = [float(ratio) for ratio in new_ratios]
+    new_ratios_dict = {key: ratio for key, ratio in zip(pod_distribution.keys(), new_ratios)}
+
+    # 更新 YAML 配置结构
     yaml_config = {
-        "gpuPodRatios": ratios
+        "gpuPodRatios": new_ratios_dict
     }
 
     yaml_string = yaml.dump(yaml_config, default_flow_style=False)
 
     return yaml_string
+
 
 def generate_cluster_cfg(cluster_path:str,export_path:str,checkpointOrNot:bool,schedule_type:str):
     snapshot_export_path = os.path.join(export_path,schedule_type,"check" if checkpointOrNot else "noncheck")
@@ -185,7 +212,7 @@ spec:
     customConfig: {cluster_path}
   customConfig:
     descheduleConfig:
-      ratio: {'1' if checkpointOrNot else '0.0'}
+      ratio: {'0.99' if checkpointOrNot else '0.0'}
       policy: "binPacking"
     exportConfig:
       nodeSnapshotCSVFilePrefix: {snapshot_export_path}
@@ -205,7 +232,7 @@ spec:
   newNode: example/newnode/gpushare
 """
 
-def save_yaml_files(input_cfg_path, schedule_type, pod_distribution, cluster_path, export_path, checkpointOrNot):
+def save_yaml_files(input_cfg_path, schedule_type, pod_distribution, cluster_path, export_path, checkpointOrNot,difference):
     # 确保目录存在
     if not os.path.exists(input_cfg_path):
         os.makedirs(input_cfg_path)
@@ -217,7 +244,7 @@ def save_yaml_files(input_cfg_path, schedule_type, pod_distribution, cluster_pat
         f.write(schedule_yaml)
 
     # 生成 Pod 配置
-    pod_yaml = generate_pod_cfg(pod_distribution)
+    pod_yaml = generate_pod_cfg(pod_distribution,difference)
     pod_file_path = os.path.join(input_cfg_path, "test-pod-distribution-config.yaml")
     with open(pod_file_path, 'w') as f:
         f.write(pod_yaml)
@@ -232,21 +259,22 @@ def save_yaml_files(input_cfg_path, schedule_type, pod_distribution, cluster_pat
     
 if __name__ == "__main__":
     os.makedirs('tmp', exist_ok=True)
-    if len(sys.argv) != 5:
-        print("Provide four arg: output file path and pod distribution and the path of generating config and cluster path")
+    if len(sys.argv) != 6:
+        print("Provide 5 arg: output file path and pod distribution and the path of generating config and cluster path and difference among pod distribution config")
     
     output_file_path = sys.argv[1]
     pod_distribution = sys.argv[2]
     input_cfg_path = sys.argv[3]
     cluster_path = sys.argv[4]
+    difference = sys.argv[5]
 
     # Random with deschedule
-    save_yaml_files(os.path.join(input_cfg_path,"Random-with-deschedule-config"),"random",pod_distribution,cluster_path,output_file_path,True)
-    save_yaml_files(os.path.join(input_cfg_path,"Random-without-deschedule-config"),"random",pod_distribution,cluster_path,output_file_path,False)
-    save_yaml_files(os.path.join(input_cfg_path,"FGD-with-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,True)
-    save_yaml_files(os.path.join(input_cfg_path,"FGD-without-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,False)
-    save_yaml_files(os.path.join(input_cfg_path,"BestFit-with-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,True)
-    save_yaml_files(os.path.join(input_cfg_path,"BestFit-without-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,False)
+    save_yaml_files(os.path.join(input_cfg_path,"Random-with-deschedule-config"),"random",pod_distribution,cluster_path,output_file_path,True,difference)
+    save_yaml_files(os.path.join(input_cfg_path,"Random-without-deschedule-config"),"random",pod_distribution,cluster_path,output_file_path,False,difference)
+    save_yaml_files(os.path.join(input_cfg_path,"FGD-with-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,True,difference)
+    save_yaml_files(os.path.join(input_cfg_path,"FGD-without-deschedule-config"),"fgd",pod_distribution,cluster_path,output_file_path,False,difference)
+    save_yaml_files(os.path.join(input_cfg_path,"BestFit-with-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,True,difference)
+    save_yaml_files(os.path.join(input_cfg_path,"BestFit-without-deschedule-config"),"bestfit",pod_distribution,cluster_path,output_file_path,False,difference)
 
     # 原有的命令参数
     commands = [

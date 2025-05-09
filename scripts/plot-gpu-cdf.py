@@ -354,5 +354,5 @@ if __name__ == "__main__":
     plot_gpu_schedule(extracted_data_allo, data_directory, 'GPU Schedule')
     plot_gpu_schedule(extracted_data_q2, data_directory, 'Q2 Lack GPU')
     plot_gpu_schedule(extracted_data_frag, data_directory, 'Frag GPU Milli')
-    plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
-    plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+    # plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+    # plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)

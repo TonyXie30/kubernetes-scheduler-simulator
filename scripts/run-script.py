@@ -15,37 +15,45 @@ import multiprocessing
 
 
 # 蒙特卡洛模拟生成负载配置
-# def monte_carlo_load_generation():
-#     all_loads = []
-#     target_percentages = [0.2, 0.4, 0.6, 0.8]
-
-#     for percentage in target_percentages:
-#         # 初始化负载配置
-#         load = {str(i): random.randint(10, 100) for i in range(1, 8)}
-#         # 计算其他卡数任务的总 GPU 需求
-#         other_gpu_demand = sum(int(key) * value for key, value in load.items())
-#         # 计算 8 卡任务的数量
-#         eight_gpu_demand = other_gpu_demand * percentage / (1 - percentage)
-#         eight_gpu_count = int(eight_gpu_demand / 8)
-#         load["8"] = eight_gpu_count
-#         all_loads.append(load)
-#     return all_loads
-
-def monte_carlo_load_generation(num_simulations=10, max_increase=30):
-    initial_load = {str(i): 10 for i in range(1, 9)}
+def monte_carlo_load_generation():
     all_loads = []
-    all_loads.append(initial_load)
-    for _ in range(num_simulations-1):
-        new_load = {}
-        for key, value in initial_load.items():
-            if random.random() < 0.5:
-                increase = random.randint(1, max_increase)
-                new_load[key] = value + increase
-            else:
-                new_load[key] = value
-        all_loads.append(new_load)
-        initial_load = new_load
+    target_percentages = [0.4]
+
+    for percentage in target_percentages:
+        # 初始化负载配置
+        load = {str(i): random.randint(10, 100) for i in range(1, 8)}
+        # 计算其他卡数任务的总 GPU 需求
+        other_gpu_demand = sum(int(key) * value for key, value in load.items())
+        # 计算 8 卡任务的数量
+        eight_gpu_demand = other_gpu_demand * percentage / (1 - percentage)
+        eight_gpu_count = int(eight_gpu_demand / 8)
+        load["8"] = eight_gpu_count
+        all_loads.append(load)
     return all_loads
+
+# def monte_carlo_load_generation(num_simulations=50, max_increase=30):
+#     all_loads = []
+#     load = {
+#         "1": 10,
+#         "2": 10,
+#         "3": 10,
+#         "4": 10,
+#         "5": 10,
+#         "6": 10,
+#         "7": 10,
+#         "8": 100
+#     }
+#     # for _ in range(num_simulations):
+#     #     # 初始化一个字典，键为 1 到 8，值初始为 0
+#     #     load = {str(i): 10 for i in range(1, 9)}
+#     #     # 随机生成总任务数量，范围在 10 到 100 之间
+#     #     total_tasks = random.randint(10, 100)
+#     #     for _ in range(total_tasks):
+#     #         # 随机选择一个 1 到 8 之间的卡数
+#     #         gpu_num = str(random.randint(1, 8))
+#     #         load[gpu_num] += 1
+#     all_loads.append(load)        
+#     return all_loads
 
 
 
@@ -98,28 +106,29 @@ def run_simulation(j, loads):
         print(f"Error occurred while running node generation script: {e}")
         exit(1)
     
-    for _ in range(3):
-        running_target_path = f"tmp/test_group_{j}_{workload_ratio}"
-        # 执行实验
-        try:
-            subprocess.run(['python3', running_script_path, running_target_path, json.dumps(current_load), f"datas/test_group_{j}_{workload_ratio}/cfg", f'datas/test_group_{j}_{workload_ratio}/cluster'])
-        except subprocess.CalledProcessError as e:
-            print(f"Error occurred while running running_experiments script: {e}")
-            exit(1)
+    for i in range(5):
+        running_target_path = f"tmp/test_group_{i}_{workload_ratio}"
+        for _ in range(10):
+            # 执行实验
+            try:
+                subprocess.run(['python3', running_script_path, running_target_path, json.dumps(current_load), f"datas/test_group_{j}_{workload_ratio}/cfg", f'datas/test_group_{j}_{workload_ratio}/cluster',str(i*0.2)])
+            except subprocess.CalledProcessError as e:
+                print(f"Error occurred while running running_experiments script: {e}")
+                exit(1)
 
 
 if __name__ == "__main__":
     # 获取模拟次数
-    simulation_count = 4
+    simulation_count = 1
     loads = monte_carlo_load_generation()
-
+    run_simulation(1, loads)
     # 创建进程池
-    pool = multiprocessing.Pool()
+    # pool = multiprocessing.Pool()
 
-    # 并行执行模拟任务
-    jobs = [pool.apply_async(run_simulation, args=(j, loads)) for j in range(1, simulation_count + 1)]
+    # # 并行执行模拟任务
+    # jobs = [pool.apply_async(run_simulation, args=(j, loads)) for j in range(1, simulation_count + 1)]
 
-    # 关闭进程池，不再接受新的任务
-    pool.close()
-    # 等待所有进程完成任务
-    pool.join()
+    # # 关闭进程池，不再接受新的任务
+    # pool.close()
+    # # 等待所有进程完成任务
+    # pool.join()

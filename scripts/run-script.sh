@@ -3,8 +3,8 @@
 go mod vendor
 make
 
-rm -r datas/*
-rm -r tmp/*
+[ -d "datas" ] && rm -r datas/*
+[ -d "tmp" ] && rm -r tmp/*
 
 chmod +x scripts/run-script.py
 chmod +x scripts/plot-gpu-cdf.py
