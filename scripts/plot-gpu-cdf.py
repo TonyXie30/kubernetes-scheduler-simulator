@@ -335,6 +335,69 @@ def plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_group
     plot_single_grouped_bar(extracted_data_frag, 'Frag GPU Value (%)', 'Frag GPU Value Comparison for Test Groups',
                             os.path.join(output_dir, 'frag_gpu_milli_grouped_bar_chart.png'))
 
+def plot_gpu_schedule_difference_line_chart(extracted_data, output_dir, plot_name):
+    labels = ["Random", "BestFit", "FGD"]
+    colors = ['r', 'b', 'g']
+    markers = ['o', 's', '^']
+    linestyles = ['-', '--', '-.']
+
+    # 定义新的 X 轴标签和刻度位置
+    x_labels = ["0%", "20%", "40%", "60%", "80%"]
+    num_groups = len(x_labels)
+    x_ticks = np.arange(num_groups)
+
+    plt.figure(figsize=(10, 6))
+
+    all_diff_values = []
+    for i, label in enumerate(labels):
+        diff_values = []
+        for idx, group_data in enumerate(extracted_data):
+            if idx >= num_groups:
+                break
+            base_value = group_data[label]
+            checkpoint_value = group_data[f"{label}+checkpoint"]
+            diff = abs(base_value - checkpoint_value)
+            diff_values.append(diff)
+        all_diff_values.extend(diff_values)
+
+        plt.plot(x_ticks[:len(diff_values)], diff_values, label=f"{label} Difference", color=colors[i],
+                 marker=markers[i], linestyle=linestyles[i], linewidth=2)
+
+    min_value = min(all_diff_values)
+    max_value = max(all_diff_values)
+    # 确定水平参考线的间隔，这里设置为 1，可按需调整
+    step = 1
+    # 计算合适的参考线起始值
+    start = int(min_value // step) * step
+    end = int(max_value // step + 1) * step
+
+    # 添加水平参考线
+    for y in range(start, end + step, step):
+        plt.axhline(y=y, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
+
+    # 添加垂直参考线
+    for x in x_ticks:
+        plt.axvline(x=x, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
+
+    plt.xlabel('KL Divergence', fontsize=14)
+    if plot_name == 'GPU Schedule':
+        plt.ylabel('Difference in Allocated GPU Value (%)', fontsize=14)
+    elif plot_name == 'Q2 Lack GPU':
+        plt.ylabel('Difference in Lack GPU Percentage (%)', fontsize=14)
+    elif plot_name == 'Frag GPU Milli':
+        plt.ylabel('Difference in Frag GPU Value (%)', fontsize=14)
+    plt.title(f'{plot_name} Difference Comparison', fontsize=16)
+    # 设置新的 X 轴刻度标签
+    plt.xticks(x_ticks, x_labels, fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.legend(fontsize=12, loc='upper left')
+
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, f'{plot_name}_difference_line_chart.png')
+    plt.savefig(output_path)
+    plt.close()
+
+
 
 if __name__ == "__main__":
     import sys
@@ -345,6 +408,7 @@ if __name__ == "__main__":
     data_directory = sys.argv[1]
     all_group_results = []
     test_groups = [os.path.join(data_directory, d) for d in os.listdir(data_directory) if os.path.isdir(os.path.join(data_directory, d))]
+    test_groups.sort()
     for test_group in test_groups:
         group_result = calculate_average_in_group(test_group)
         all_group_results.append(group_result)
@@ -356,3 +420,7 @@ if __name__ == "__main__":
     plot_gpu_schedule(extracted_data_frag, data_directory, 'Frag GPU Milli')
     # plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
     # plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+    plot_gpu_schedule_difference_line_chart(extracted_data_allo, data_directory, 'GPU Schedule')
+    plot_gpu_schedule_difference_line_chart(extracted_data_q2, data_directory, 'Q2 Lack GPU')
+    plot_gpu_schedule_difference_line_chart(extracted_data_frag, data_directory, 'Frag GPU Milli')
+    
