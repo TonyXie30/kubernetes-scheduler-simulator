@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 
+# 统一设置图片大小
+plt.rcParams['figure.figsize'] = (12, 8)
+
 def calculate_average_in_group(group_dir):
     group_results = {
         "allo_dict": {},
@@ -118,12 +121,12 @@ def plot_line_chart(all_group_results, output_dir):
 
         plt.plot(x_tick_values, frag_gpu_milli_values, label=label, marker='o', color=colors[i])
 
-    plt.xlabel('Workload', fontsize=14)
-    plt.ylabel('Frag GPU Milli Value(%)', fontsize=14)
-    plt.title('Frag GPU Milli Comparison for Test Groups', fontsize=16)
+    plt.xlabel('Workload', fontsize=20)
+    plt.ylabel('Frag GPU Milli Value(%)', fontsize=20)
+    plt.title('Frag GPU Milli Comparison for Test Groups', fontsize=20)
     # 设置横坐标刻度
-    plt.xticks(tick_positions, tick_labels, fontsize=12)
-    plt.yticks(fontsize=12)
+    plt.xticks(tick_positions, tick_labels, fontsize=20)
+    plt.yticks(fontsize=20)
     plt.legend(fontsize=12, loc='upper left')
 
     os.makedirs(output_dir, exist_ok=True)
@@ -168,10 +171,10 @@ def plot_gpu_cdf(group_dir):
         else:
             print(f"文件 {file_path} 不存在，跳过。")
 
-    plt.xlabel('Sum of GPU Milli Left (in units of 1000)')
-    plt.ylabel('CDF')
-    plt.title('GPU Usage CDF for Different Scenarios')
-    plt.legend()
+    plt.xlabel('Sum of GPU Milli Left (in units of 1000)', fontsize=20)
+    plt.ylabel('CDF', fontsize=20)
+    plt.title('GPU Usage CDF for Different Scenarios', fontsize=20)
+    plt.legend(fontsize=12)
 
     output_path = os.path.join(group_dir, 'gpu_usage_cdf.png')
     plt.savefig(output_path)
@@ -180,7 +183,7 @@ def plot_gpu_cdf(group_dir):
 def plot_gpu_schedule(extracted_data, output_dir, plot_name):
     labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
     colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
-    hatches = ['\\', '/', '|', '+', 'x', 'o']
+    hatches = ['\\', '/', '|', '+', '-', 'x']
 
     bar_width = 0.8
     index = np.arange(len(labels))
@@ -192,7 +195,13 @@ def plot_gpu_schedule(extracted_data, output_dir, plot_name):
         bars = plt.bar(index, values, width=bar_width, label=labels, color=colors,
                        edgecolor='black',
                        linewidth=1,
-                       hatch=hatches)
+                       hatch=hatches
+                       )
+
+        # 找出最大的值，用于调整 y 轴上限
+        max_value = max(values)
+        # 适当增加 y 轴上限，留出显示数值的空间
+        plt.ylim(0, max_value * 1.1)
 
         # 在每个柱子上标注数值
         for bar in bars:
@@ -202,21 +211,21 @@ def plot_gpu_schedule(extracted_data, output_dir, plot_name):
                          xytext=(0, 3),  # 3 points vertical offset
                          textcoords="offset points",
                          ha='center', va='bottom',
-                         fontsize=10)
+                         fontsize=30)
 
-        plt.xlabel('Scheduling Method', fontsize=14)
+        plt.xlabel('Scheduling Method', fontsize=30)
         if plot_name == 'GPU Schedule':
-            plt.ylabel('Allocated GPU Value (%)', fontsize=14)
+            plt.ylabel('Allocated GPU Value (%)', fontsize=30)
         elif plot_name == 'Q2 Lack GPU':
-            plt.ylabel('Lack GPU Percentage (%)', fontsize=14)
+            plt.ylabel('Lack GPU Percentage (%)', fontsize=30)
         elif plot_name == 'Frag GPU Milli':
-            plt.ylabel('Frag GPU Value (%)', fontsize=14)
-        plt.title(f'Average Frag Value Comparison', fontsize=16)
-        # plt.xticks(index, labels, fontsize=12, rotation=45)
-        plt.yticks(fontsize=12)
+            plt.ylabel('Frag GPU Value (%)', fontsize=30)
+        plt.title(f'Average Frag Value Comparison', fontsize=30)
+        plt.xticks([], [], fontsize=30, rotation=45)
+        plt.yticks(fontsize=30)
 
         # 设置图例位置为右上角
-        plt.legend(fontsize=12)
+        plt.legend(fontsize=28)
 
         os.makedirs(output_dir, exist_ok=True)
         output_path = os.path.join(output_dir, f'{plot_name}_comparison_group_{group_idx + 1}.png')
@@ -233,9 +242,6 @@ def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, 
     sorted_indices = np.argsort(x_percentages)
     sorted_test_groups = [test_groups[i] for i in sorted_indices]
     x_labels = ["80%", "90%", "100%", "110%"]
-
-    # 设置图片大小，与前面图形保持一致
-    plt.rcParams['figure.figsize'] = (10, 6)
 
     def plot_with_horizontal_and_vertical_lines(data, ylabel, title, output_path):
         all_values = [value for sublist in data for value in sublist.values()]
@@ -261,12 +267,12 @@ def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, 
             sorted_values = [data[i][label] for i in sorted_indices]
             # 增加 linewidth 参数，将线条加粗，这里设置为 2，可按需调整
             plt.plot(x_labels, sorted_values, label=label, marker='o', color=colors[i], linestyle=linestyles[i], linewidth=4)
-        plt.xlabel('Workload', fontsize=16)
-        plt.ylabel(ylabel, fontsize=16)
-        plt.title(title, fontsize=16)
-        plt.xticks(rotation=45, fontsize=14)
-        plt.yticks(fontsize=14)
-        plt.legend(fontsize=14)
+        plt.xlabel('Workload', fontsize=20)
+        plt.ylabel(ylabel, fontsize=20)
+        plt.title(title, fontsize=20)
+        plt.xticks(fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.legend(fontsize=20)
 
         # 自动调整布局
         plt.tight_layout()
@@ -274,14 +280,15 @@ def plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, 
         plt.close()
 
     # 绘制 GPU Schedule 折线图
-    plot_with_horizontal_and_vertical_lines(extracted_data_allo, 'GPU Schedule Value (%)', 'GPU Schedule Value Change', os.path.join(output_dir, 'gpu_schedule_change_line_chart.png'))
+    plot_with_horizontal_and_vertical_lines(extracted_data_allo, 'Allocated GPU Value (%)', 'Allocated GPU Value Change', os.path.join(output_dir, 'gpu_schedule_change_line_chart.png'))
     # 绘制 Frag GPU Milli 折线图
     plot_with_horizontal_and_vertical_lines(extracted_data_frag, 'Frag GPU Value (%)', 'Frag GPU Value Change', os.path.join(output_dir, 'frag_gpu_milli_change_line_chart.png'))
 
 def plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, output_dir):
     labels = ["Random", "Random+checkpoint", "BestFit", "BestFit+checkpoint", "FGD", "FGD+checkpoint"]
     colors = ['#c03d3e', '#3274a1', '#e1812c', '#3a923a', '#964b00', '#8064a2']
-    hatches = ['\\', '/', '|', '+', 'x', 'o']
+    # 通过在字符间添加空格让 hatches 更稀疏
+    hatches = ['\\', '/', '|', '+', '-', 'x']
 
     # 假设 test_groups 目录名包含比例信息，提取并排序
     x_percentages = [float(os.path.basename(group).split('_')[-1]) * 100 for group in test_groups]
@@ -289,21 +296,25 @@ def plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_group
     sorted_test_groups = [test_groups[i] for i in sorted_indices]
     x_labels = ["20%", "40%", "60%", "80%"]
 
-    # 设置图片大小，与前面图形保持一致
-    plt.rcParams['figure.figsize'] = (10, 6)
-
     def plot_single_grouped_bar(data, ylabel, title, output_path):
         num_groups = len(x_labels)
         num_bars_per_group = len(labels)
         bar_width = 0.8 / num_bars_per_group
         index = np.arange(num_groups)
         bars = []
+        all_values = []
 
         for i, label in enumerate(labels):
             sorted_values = [data[j][label] for j in sorted_indices]
+            all_values.extend(sorted_values)
             bar = plt.bar(index + i * bar_width, sorted_values, width=bar_width, label=label, color=colors[i],
                           edgecolor='black', linewidth=1, hatch=hatches[i])
             bars.append(bar)
+
+        # 找出最大的值，用于调整 y 轴上限
+        max_value = max(all_values)
+        # 适当增加 y 轴上限，留出显示数值的空间
+        plt.ylim(0, max_value * 1.1)
 
         # 为每个 group 的最后一个柱状图添加数值标注
         for group_idx in range(num_groups):
@@ -314,14 +325,14 @@ def plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_group
                          xytext=(0, 3),  # 3 points vertical offset
                          textcoords="offset points",
                          ha='center', va='bottom',
-                         fontsize=12)
+                         fontsize=20)
 
-        plt.xlabel('Workload', fontsize=16)
-        plt.ylabel(ylabel, fontsize=16)
-        plt.title(title, fontsize=16)
-        plt.xticks(index + (num_bars_per_group - 1) * bar_width / 2, x_labels, fontsize=14, rotation=45)
-        plt.yticks(fontsize=14)
-        plt.legend(fontsize=14, loc='upper right')
+        plt.xlabel('Workload', fontsize=20)
+        plt.ylabel(ylabel, fontsize=20)
+        plt.title(title, fontsize=20)
+        plt.xticks(index + (num_bars_per_group - 1) * bar_width / 2, x_labels, fontsize=20)
+        plt.yticks(fontsize=20)
+        plt.legend(fontsize=20)
 
         # 自动调整布局
         plt.tight_layout()
@@ -346,7 +357,7 @@ def plot_gpu_schedule_difference_line_chart(extracted_data, output_dir, plot_nam
     num_groups = len(x_labels)
     x_ticks = np.arange(num_groups)
 
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 8))
 
     all_diff_values = []
     for i, label in enumerate(labels):
@@ -379,18 +390,18 @@ def plot_gpu_schedule_difference_line_chart(extracted_data, output_dir, plot_nam
     for x in x_ticks:
         plt.axvline(x=x, color='gray', linestyle='--', linewidth=0.5, alpha=0.7)
 
-    plt.xlabel('KL Divergence', fontsize=14)
+    plt.xlabel('KL Divergence', fontsize=20)
     if plot_name == 'GPU Schedule':
-        plt.ylabel('Difference in Allocated GPU Value (%)', fontsize=14)
+        plt.ylabel('Difference in Allocated GPU Value (%)', fontsize=20)
     elif plot_name == 'Q2 Lack GPU':
-        plt.ylabel('Difference in Lack GPU Percentage (%)', fontsize=14)
+        plt.ylabel('Difference in Lack GPU Percentage (%)', fontsize=20)
     elif plot_name == 'Frag GPU Milli':
-        plt.ylabel('Difference in Frag GPU Value (%)', fontsize=14)
-    plt.title(f'{plot_name} Difference Comparison', fontsize=16)
+        plt.ylabel('Difference in Frag GPU Value (%)', fontsize=20)
+    plt.title(f'{plot_name} Difference Comparison', fontsize=20)
     # 设置新的 X 轴刻度标签
-    plt.xticks(x_ticks, x_labels, fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend(fontsize=12, loc='upper left')
+    plt.xticks(x_ticks, x_labels, fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.legend(fontsize=20, loc='upper left')
 
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, f'{plot_name}_difference_line_chart.png')
@@ -418,9 +429,8 @@ if __name__ == "__main__":
     plot_gpu_schedule(extracted_data_allo, data_directory, 'GPU Schedule')
     plot_gpu_schedule(extracted_data_q2, data_directory, 'Q2 Lack GPU')
     plot_gpu_schedule(extracted_data_frag, data_directory, 'Frag GPU Milli')
-    # plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
-    # plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
-    plot_gpu_schedule_difference_line_chart(extracted_data_allo, data_directory, 'GPU Schedule')
-    plot_gpu_schedule_difference_line_chart(extracted_data_q2, data_directory, 'Q2 Lack GPU')
-    plot_gpu_schedule_difference_line_chart(extracted_data_frag, data_directory, 'Frag GPU Milli')
-    
+    plot_new_line_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+    plot_grouped_bar_charts(extracted_data_allo, extracted_data_frag, test_groups, data_directory)
+    # plot_gpu_schedule_difference_line_chart(extracted_data_allo, data_directory, 'GPU Schedule')
+    # plot_gpu_schedule_difference_line_chart(extracted_data_q2, data_directory, 'Q2 Lack GPU')
+    # plot_gpu_schedule_difference_line_chart(extracted_data_frag, data_directory, 'Frag GPU Milli')
